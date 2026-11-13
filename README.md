@@ -61,10 +61,67 @@ pjx config set scan_roots '["~/projects","~/workspace"]'
 
 ## Plugins
 
-- `plugins/noctalia/` - Noctalia v5 launcher provider (trigger `/pm` or `pm`)
+- `plugins/noctalia/` - Noctalia v5 launcher provider (trigger `pm`)
 - `plugins/dms/` - DMS (DankMaterialShell) launcher plugin (trigger `pm`)
 
 Both call `pjx list --format=delimited` and `pjx open`.
+
+## Development
+
+### Requirements
+
+**Core (Go):**
+- Go 1.27+
+- `gofmt` (bundled with Go)
+- `golangci-lint` v2.x — `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest`
+- `goimports` — `go install golang.org/x/tools/cmd/goimports@latest` (optional, falls back to gofmt)
+
+**QML (DMS plugin):**
+- `qmlformat` and `qmllint` — part of Qt 6 declarative dev tools
+  - Arch: `pacman -S qt6-declarative`
+  - Debian/Ubuntu: `apt install qt6-declarative-dev-tools`
+
+**Luau (Noctalia plugin):**
+- `stylua` v2.x — `cargo install stylua` or download from [releases](https://github.com/JohnnyMorganz/StyLua/releases)
+  - Already available if you use nvim mason: `~/.local/share/nvim/mason/bin/stylua`
+
+### Install all tooling
+
+```sh
+make install-tools
+```
+
+This installs the Go tools (offline-friendly from the module cache) and prints
+instructions for any missing non-Go tools.
+
+### Quality gates
+
+```sh
+make quality        # fmt-check + lint + vet
+make fmt            # format Go + Luau
+make fmt-check      # check formatting (Go, Luau, QML)
+make lint           # lint Go + QML + Luau
+make vet            # go vet
+make staticcheck    # static analysis (if installed)
+make test           # run tests
+```
+
+CI runs the same gates on every push and pull request (see `.github/workflows/ci.yml`).
+
+### Project layout
+
+```
+projx/
+├── cmd/pjx/              # CLI entry point
+├── internal/              # Go packages (config, db, model, discovery, importer, gitinfo, cli, tui)
+├── plugins/
+│   ├── noctalia/          # Noctalia v5 plugin (Luau)
+│   └── dms/               # DMS plugin (QML)
+├── scripts/               # install-tools.sh
+├── .github/workflows/     # CI
+├── Makefile
+└── README.md
+```
 
 ## License
 
