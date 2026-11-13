@@ -7,6 +7,8 @@
   "icon": "folder",
   "type": "launcher",
   "component": "./ProjxLauncher.qml",
-  "trigger": "pm",
-  "permissions": ["settings_read"]
+  "trigger": "pjx",
+  "permissions": [
+    "settings_read"
+  ]
 }
