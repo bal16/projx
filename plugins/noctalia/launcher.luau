@@ -142,7 +142,10 @@ local function showResults(query, projects, filter)
 
 	-- If query looks like a path and exists on disk, offer to add it.
 	local trimmedFilter = trim(filter)
-	if trimmedFilter ~= "" and (trimmedFilter:find("/", 1, true) or trimmedFilter:sub(1, 1) == "~" or trimmedFilter:sub(1, 1) == ".") then
+	if
+		trimmedFilter ~= ""
+		and (trimmedFilter:find("/", 1, true) or trimmedFilter:sub(1, 1) == "~" or trimmedFilter:sub(1, 1) == ".")
+	then
 		local expanded = trimmedFilter
 		if expanded:sub(1, 2) == "~/" then
 			expanded = (noctalia.getenv("HOME") or "") .. expanded:sub(2)
@@ -150,13 +153,22 @@ local function showResults(query, projects, filter)
 		-- check if already a project
 		local already = false
 		for _, p in ipairs(projects) do
-			if p.path == expanded then already = true; break end
+			if p.path == expanded then
+				already = true
+				break
+			end
 		end
 		if not already then
 			pathExists(expanded, function(exists)
 				if exists then
 					local name = expanded:match("([^/]+)$") or expanded
-					local addRow = { id = "add:" .. expanded, title = "Add project: " .. name, subtitle = expanded, glyph = "plus", score = 100 }
+					local addRow = {
+						id = "add:" .. expanded,
+						title = "Add project: " .. name,
+						subtitle = expanded,
+						glyph = "plus",
+						score = 100,
+					}
 					table.insert(rows, 1, addRow)
 					launcher.setResults(query, rows)
 				else
@@ -169,9 +181,14 @@ local function showResults(query, projects, filter)
 
 	-- Utility entries: show when filter empty or matches config/scan/import keywords.
 	local lower = filter:lower()
-	local showUtil = (filter == "") or lower:find("scan", 1, true) or lower:find("import", 1, true) or
-		lower:find("config", 1, true) or lower:find("settings", 1, true) or lower:find("editor", 1, true) or
-		lower:find("add", 1, true) or lower:find("help", 1, true)
+	local showUtil = (filter == "")
+		or lower:find("scan", 1, true)
+		or lower:find("import", 1, true)
+		or lower:find("config", 1, true)
+		or lower:find("settings", 1, true)
+		or lower:find("editor", 1, true)
+		or lower:find("add", 1, true)
+		or lower:find("help", 1, true)
 	if showUtil then
 		for _, r in ipairs(utilRows(filter)) do
 			table.insert(rows, r)
