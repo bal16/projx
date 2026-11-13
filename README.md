@@ -71,17 +71,20 @@ Both call `pjx list --format=delimited` and `pjx open`.
 ### Requirements
 
 **Core (Go):**
+
 - Go 1.27+
 - `gofmt` (bundled with Go)
 - `golangci-lint` v2.x — `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest`
 - `goimports` — `go install golang.org/x/tools/cmd/goimports@latest` (optional, falls back to gofmt)
 
 **QML (DMS plugin):**
+
 - `qmlformat` and `qmllint` — part of Qt 6 declarative dev tools
   - Arch: `pacman -S qt6-declarative`
   - Debian/Ubuntu: `apt install qt6-declarative-dev-tools`
 
 **Luau (Noctalia plugin):**
+
 - `stylua` v2.x — `cargo install stylua` or download from [releases](https://github.com/JohnnyMorganz/StyLua/releases)
   - Already available if you use nvim mason: `~/.local/share/nvim/mason/bin/stylua`
 
