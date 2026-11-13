@@ -1,0 +1,15 @@
+id = "projx/project-manager"
+name = "Project Manager (projx)"
+version = "0.1.0"
+author = "projx"
+plugin_api = 3
+license = "MIT"
+description = "Universal project manager. Lists and launches projects from pjx (zed, vscode, nvim, ...) via the Noctalia launcher."
+dependencies = ["pjx", "nohup"]
+
+[[launcher_provider]]
+id = "projects"
+name = "Projects"
+description = "Find and open projects managed by pjx."
+entry = "launcher.luau"
+trigger = "pm"
