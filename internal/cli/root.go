@@ -65,6 +65,7 @@ from an existing editor, and 'pjx list' (JSON) to feed a shell launcher.`,
 		newImportCmd(),
 		newRefreshCmd(),
 		newConfigCmd(),
+		newTuiCmd(),
 		newVersionCmd(),
 	)
 	return root
