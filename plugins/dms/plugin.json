@@ -1,0 +1,12 @@
+{
+  "id": "projxLauncher",
+  "name": "projx Project Manager",
+  "description": "Quick access to projects managed by pjx (zed, vscode, nvim, ...)",
+  "version": "0.1.0",
+  "author": "projx",
+  "icon": "folder",
+  "type": "launcher",
+  "component": "./ProjxLauncher.qml",
+  "trigger": "pm",
+  "permissions": ["settings_read"]
+}
