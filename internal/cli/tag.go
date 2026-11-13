@@ -21,11 +21,12 @@ func newTagCmd() *cobra.Command {
 			}
 			for _, t := range args[1:] {
 				t = strings.TrimSpace(t)
-				if strings.HasPrefix(t, "+") {
+				switch {
+				case strings.HasPrefix(t, "+"):
 					p.AddTag(strings.TrimPrefix(t, "+"))
-				} else if strings.HasPrefix(t, "-") {
+				case strings.HasPrefix(t, "-"):
 					p.RemoveTag(strings.TrimPrefix(t, "-"))
-				} else {
+				default:
 					p.AddTag(t)
 				}
 			}

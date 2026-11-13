@@ -46,7 +46,7 @@ func (r *Repository) List(tag, group string, favoritesOnly bool) ([]model.Projec
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []model.Project
 	for rows.Next() {
@@ -64,7 +64,7 @@ func (r *Repository) Get(idOrName string) (*model.Project, error) {
 	row := r.db.QueryRow(
 		`SELECT id,name,path,editor,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at
 		 FROM projects WHERE id = ? OR LOWER(name) = LOWER(?) LIMIT 1`, idOrName, idOrName)
-	p, err := scanProjectRow(row)
+	p, err := scanProject(row)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (r *Repository) GetByPath(path string) (*model.Project, error) {
 	row := r.db.QueryRow(
 		`SELECT id,name,path,editor,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at
 		 FROM projects WHERE path = ? LIMIT 1`, path)
-	p, err := scanProjectRow(row)
+	p, err := scanProject(row)
 	if err != nil {
 		return nil, err
 	}
@@ -168,34 +168,17 @@ func (r *Repository) SetSetting(key, value string) error {
 
 // --- helpers ---
 
-func scanProject(rows *sql.Rows) (model.Project, error) {
-	var p model.Project
-	var tagsJSON string
-	var fav, lastOpened, created, updated int64
-	var gitDirty int
-	err := rows.Scan(&p.ID, &p.Name, &p.Path, &p.Editor, &tagsJSON, &p.Group,
-		&fav, &lastOpened, &p.GitBranch, &gitDirty, &p.Remote, &created, &updated)
-	if err != nil {
-		return p, err
-	}
-	p.Favorite = fav == 1
-	p.GitDirty = gitDirty
-	p.LastOpened = unixToTime(lastOpened)
-	p.CreatedAt = unixToTime(created)
-	p.UpdatedAt = unixToTime(updated)
-	_ = json.Unmarshal([]byte(tagsJSON), &p.Tags)
-	if p.Tags == nil {
-		p.Tags = []string{}
-	}
-	return p, nil
+// scanner abstracts *sql.Rows and *sql.Row for shared scanning.
+type scanner interface {
+	Scan(dest ...any) error
 }
 
-func scanProjectRow(row *sql.Row) (model.Project, error) {
+func scanProject(s scanner) (model.Project, error) {
 	var p model.Project
 	var tagsJSON string
 	var fav, lastOpened, created, updated int64
 	var gitDirty int
-	err := row.Scan(&p.ID, &p.Name, &p.Path, &p.Editor, &tagsJSON, &p.Group,
+	err := s.Scan(&p.ID, &p.Name, &p.Path, &p.Editor, &tagsJSON, &p.Group,
 		&fav, &lastOpened, &p.GitBranch, &gitDirty, &p.Remote, &created, &updated)
 	if err != nil {
 		return p, err

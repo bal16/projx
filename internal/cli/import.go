@@ -17,9 +17,10 @@ func newImportCmd() *cobra.Command {
 			a := requireApp()
 
 			var importers []importer.Importer
-			if all {
+			switch {
+			case all:
 				importers = importer.All()
-			} else if len(args) > 0 {
+			case len(args) > 0:
 				for _, name := range args {
 					imp, err := importer.ByName(name)
 					if err != nil {
@@ -27,7 +28,7 @@ func newImportCmd() *cobra.Command {
 					}
 					importers = append(importers, imp)
 				}
-			} else {
+			default:
 				return fmt.Errorf("specify an editor or use --all")
 			}
 

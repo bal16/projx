@@ -57,7 +57,7 @@ func newScanCmd() *cobra.Command {
 					continue
 				}
 				if err := a.Repo.Add(p); err != nil {
-					fmt.Fprintf(cmd.ErrOrStderr(), "skip %s: %v\n", f.Path, err)
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "skip %s: %v\n", f.Path, err)
 					continue
 				}
 				added++

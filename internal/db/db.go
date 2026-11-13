@@ -32,12 +32,12 @@ func Open() (*DB, error) {
 	}
 	// Enable WAL for better concurrency and foreign keys.
 	if _, err := sqlDB.Exec("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;"); err != nil {
-		sqlDB.Close()
+		_ = sqlDB.Close()
 		return nil, fmt.Errorf("pragma: %w", err)
 	}
 	db := &DB{DB: sqlDB, path: path}
 	if err := db.migrate(); err != nil {
-		sqlDB.Close()
+		_ = sqlDB.Close()
 		return nil, err
 	}
 	return db, nil

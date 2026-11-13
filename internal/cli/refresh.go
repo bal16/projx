@@ -28,7 +28,7 @@ func newRefreshCmd() *cobra.Command {
 			for _, id := range list {
 				p, err := a.Repo.Get(id)
 				if err != nil {
-					fmt.Fprintf(cmd.ErrOrStderr(), "skip %s: %v\n", id, err)
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "skip %s: %v\n", id, err)
 					continue
 				}
 				gi := gitinfo.Inspect(p.Path)
@@ -36,7 +36,7 @@ func newRefreshCmd() *cobra.Command {
 					continue
 				}
 				if err := a.Repo.UpdateGitStatus(p.ID, gi.Branch, gi.Dirty); err != nil {
-					fmt.Fprintf(cmd.ErrOrStderr(), "update %s: %v\n", p.Name, err)
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "update %s: %v\n", p.Name, err)
 					continue
 				}
 				fmt.Printf("%-24s %s", p.Name, gi.Branch)

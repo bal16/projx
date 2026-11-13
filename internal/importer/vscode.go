@@ -31,7 +31,7 @@ func (v VSCodeImporter) Import() ([]model.Project, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open vscode db: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Try known keys that may contain recently opened paths.
 	keys := []string{

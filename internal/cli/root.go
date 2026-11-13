@@ -41,7 +41,7 @@ from an existing editor, and 'pjx list' (JSON) to feed a shell launcher.`,
 			repo := db.NewRepository(d)
 			cfg, err := config.Load(repo)
 			if err != nil {
-				d.Close()
+				_ = d.Close()
 				return fmt.Errorf("load config: %w", err)
 			}
 			app = &App{DB: d, Repo: repo, Config: cfg}
@@ -49,7 +49,7 @@ from an existing editor, and 'pjx list' (JSON) to feed a shell launcher.`,
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			if app != nil && app.DB != nil {
-				app.DB.Close()
+				_ = app.DB.Close()
 			}
 		},
 	}

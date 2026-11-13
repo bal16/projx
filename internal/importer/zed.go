@@ -29,13 +29,13 @@ func (ZedImporter) Import() ([]model.Project, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open zed db: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	rows, err := db.Query(`SELECT paths, remote_connection_id, timestamp FROM workspaces ORDER BY timestamp DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("query workspaces: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []model.Project
 	for rows.Next() {
@@ -71,7 +71,7 @@ func (ZedImporter) Import() ([]model.Project, error) {
 		parsed, _ := time.Parse("2006-01-02 15:04:05", ts)
 		name := filepath.Base(paths)
 		if remote != "" {
-			name = name + " (remote)"
+			name += " (remote)"
 			paths = "ssh://" + remote + paths
 		}
 
