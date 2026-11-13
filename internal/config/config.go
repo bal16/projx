@@ -17,6 +17,7 @@ type Config struct {
 	ScanMarkers    []string          `json:"scan_markers"`
 	DefaultEditor  string            `json:"default_editor"`
 	EditorCommands map[string]string `json:"editor_commands"` // editor name -> binary
+	EditorProfiles map[string]string `json:"editor_profiles"`  // editor name -> default profile
 }
 
 // DefaultConfig returns sensible defaults.
@@ -25,7 +26,8 @@ func DefaultConfig() *Config {
 		ScanRoots:     []string{},
 		ScanMaxDepth:  2,
 		ScanMarkers:   []string{".git", "Cargo.toml", "package.json", "go.mod", "pyproject.toml", "pom.xml", "build.gradle"},
-		DefaultEditor: "zed",
+		DefaultEditor:  "zed",
+		EditorProfiles: map[string]string{},
 		EditorCommands: map[string]string{
 			"zed":  "zed",
 			"code": "code",
@@ -59,6 +61,17 @@ func Load(repo *db.Repository) (*Config, error) {
 		}
 		if v, _ := repo.GetSetting("default_editor"); v != "" {
 			cfg.DefaultEditor = v
+		}
+		if v, _ := repo.GetSetting("editor_profiles"); v != "" {
+			var m map[string]string
+			if json.Unmarshal([]byte(v), &m) == nil {
+				if cfg.EditorProfiles == nil {
+					cfg.EditorProfiles = map[string]string{}
+				}
+				for k, val := range m {
+					cfg.EditorProfiles[k] = val
+				}
+			}
 		}
 		if v, _ := repo.GetSetting("scan_max_depth"); v != "" {
 			var n int
@@ -94,6 +107,9 @@ func Save(cfg *Config, repo *db.Repository) error {
 			_ = repo.SetSetting("scan_roots", string(b))
 		}
 		_ = repo.SetSetting("default_editor", cfg.DefaultEditor)
+		if b, _ := json.Marshal(cfg.EditorProfiles); true {
+			_ = repo.SetSetting("editor_profiles", string(b))
+		}
 		_ = repo.SetSetting("scan_max_depth", fmt.Sprintf("%d", cfg.ScanMaxDepth))
 	}
 	return nil
