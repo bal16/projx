@@ -45,6 +45,17 @@ pjx open my-app
 pjx open my-app --new-window
 pjx open my-app --editor nvim
 
+# Switch editor / profile for a project (persistent)
+pjx set my-app --editor code --profile "Work Profile"
+pjx set my-app --editor zed          # clear profile by omitting --profile... actually use --profile ""
+pjx set my-app --editor code --profile ""   # clear profile
+
+# One-off override (does not change stored project)
+pjx open my-app --editor vscode --profile "Personal"
+
+# Set default profile per editor
+pjx config set editor_profiles '{"code":"Default VSCode Profile"}'
+
 # Refresh cached git status
 pjx refresh
 
