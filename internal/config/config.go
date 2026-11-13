@@ -17,15 +17,15 @@ type Config struct {
 	ScanMarkers    []string          `json:"scan_markers"`
 	DefaultEditor  string            `json:"default_editor"`
 	EditorCommands map[string]string `json:"editor_commands"` // editor name -> binary
-	EditorProfiles map[string]string `json:"editor_profiles"`  // editor name -> default profile
+	EditorProfiles map[string]string `json:"editor_profiles"` // editor name -> default profile
 }
 
 // DefaultConfig returns sensible defaults.
 func DefaultConfig() *Config {
 	return &Config{
-		ScanRoots:     []string{},
-		ScanMaxDepth:  2,
-		ScanMarkers:   []string{".git", "Cargo.toml", "package.json", "go.mod", "pyproject.toml", "pom.xml", "build.gradle"},
+		ScanRoots:      []string{},
+		ScanMaxDepth:   2,
+		ScanMarkers:    []string{".git", "Cargo.toml", "package.json", "go.mod", "pyproject.toml", "pom.xml", "build.gradle"},
 		DefaultEditor:  "zed",
 		EditorProfiles: map[string]string{},
 		EditorCommands: map[string]string{
