@@ -219,6 +219,9 @@ func (m Model) View() string {
 		previewLines = append(previewLines, "Name:   "+p.Name)
 		previewLines = append(previewLines, "Path:   "+p.Path)
 		previewLines = append(previewLines, "Editor: "+orDefault(p.Editor, "default"))
+		if p.Profile != "" {
+			previewLines = append(previewLines, "Profile: "+p.Profile)
+		}
 		if len(p.Tags) > 0 {
 			previewLines = append(previewLines, "Tags:   "+strings.Join(p.Tags, ", "))
 		}
