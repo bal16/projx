@@ -268,9 +268,9 @@ func (m Model) homeDir() string {
 }
 
 // Opened returns whether a project was selected.
-func (m Model) Opened() bool { return m.opened }
+func (m Model) Opened() bool     { return m.opened }
 func (m Model) OpenPath() string { return m.openPath }
-func (m Model) OpenNew() bool { return m.openNew }
+func (m Model) OpenNew() bool    { return m.openNew }
 
 // --- helpers ---
 

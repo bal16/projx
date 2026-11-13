@@ -51,7 +51,7 @@ func newTuiCmd() *cobra.Command {
 			if p != nil {
 				_ = a.Repo.TouchLastOpened(p.ID)
 			}
-					fmt.Printf("opened %s in %s\n", path, ed)
+			fmt.Printf("opened %s in %s\n", path, ed)
 			return nil
 		},
 	}
