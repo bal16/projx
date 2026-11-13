@@ -34,6 +34,9 @@ func newConfigCmd() *cobra.Command {
 				fmt.Println(a.Config.DefaultEditor)
 			case "scan_max_depth":
 				fmt.Println(a.Config.ScanMaxDepth)
+			case "editor_profiles":
+				b, _ := json.Marshal(a.Config.EditorProfiles)
+				fmt.Println(string(b))
 			default:
 				return fmt.Errorf("unknown key: %s", args[0])
 			}
@@ -61,6 +64,17 @@ func newConfigCmd() *cobra.Command {
 					return err
 				}
 				a.Config.ScanMaxDepth = n
+			case "editor_profiles":
+				var m map[string]string
+				if err := json.Unmarshal([]byte(args[1]), &m); err != nil {
+					return fmt.Errorf("editor_profiles must be JSON object: %w", err)
+				}
+				if a.Config.EditorProfiles == nil {
+					a.Config.EditorProfiles = map[string]string{}
+				}
+				for k, v := range m {
+					a.Config.EditorProfiles[k] = v
+				}
 			default:
 				return fmt.Errorf("unknown key: %s", args[0])
 			}

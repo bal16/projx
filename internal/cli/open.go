@@ -9,7 +9,7 @@ import (
 )
 
 func newOpenCmd() *cobra.Command {
-	var editor string
+	var editor, profile string
 	var newWindow, addToWorkspace bool
 
 	cmd := &cobra.Command{
@@ -30,20 +30,31 @@ func newOpenCmd() *cobra.Command {
 			if ed == "" {
 				ed = a.Config.DefaultEditor
 			}
+			prof := profile
+			if prof == "" {
+				prof = p.Profile
+			}
+			if prof == "" && a.Config.EditorProfiles != nil {
+				prof = a.Config.EditorProfiles[ed]
+			}
 			bin, ok := a.Config.EditorCommands[ed]
 			if !ok {
 				bin = ed
 			}
 
 			var argv []string
+			vscodeVariants := map[string]bool{"code": true, "codium": true, "cursor": true, "windsurf": true, "antigravity": true}
 			switch {
 			case newWindow:
-				// editor-specific new-window flags
 				switch ed {
 				case "zed":
 					argv = []string{"-n", p.Path}
-				case "code", "codium", "cursor":
-					argv = []string{"-n", p.Path}
+				case "code", "codium", "cursor", "windsurf", "antigravity":
+					argv = []string{"-n"}
+					if prof != "" {
+						argv = append(argv, "--profile", prof)
+					}
+					argv = append(argv, p.Path)
 				default:
 					argv = []string{p.Path}
 				}
@@ -55,7 +66,11 @@ func newOpenCmd() *cobra.Command {
 					argv = []string{p.Path}
 				}
 			default:
-				argv = []string{p.Path}
+				if vscodeVariants[ed] && prof != "" {
+					argv = []string{"--profile", prof, p.Path}
+				} else {
+					argv = []string{p.Path}
+				}
 			}
 
 			if p.Remote != "" && ed == "zed" {
@@ -79,5 +94,6 @@ func newOpenCmd() *cobra.Command {
 	cmd.Flags().StringVar(&editor, "editor", "", "override editor")
 	cmd.Flags().BoolVar(&newWindow, "new-window", false, "open in a new window")
 	cmd.Flags().BoolVar(&addToWorkspace, "add", false, "add to current workspace/window")
+	cmd.Flags().StringVar(&profile, "profile", "", "override editor profile (VS Code)")
 	return cmd
 }

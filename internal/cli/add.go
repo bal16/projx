@@ -12,7 +12,7 @@ import (
 )
 
 func newAddCmd() *cobra.Command {
-	var name, editor, group string
+	var name, editor, profile, group string
 	var tags []string
 	var favorite bool
 
@@ -52,6 +52,7 @@ func newAddCmd() *cobra.Command {
 				Name:     name,
 				Path:     abs,
 				Editor:   editor,
+				Profile:  profile,
 				Tags:     tags,
 				Group:    group,
 				Favorite: favorite,
@@ -71,6 +72,7 @@ func newAddCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&name, "name", "", "display name / alias")
 	cmd.Flags().StringVar(&editor, "editor", "", "preferred editor (zed, code, nvim, ...)")
+	cmd.Flags().StringVar(&profile, "profile", "", "editor profile (VS Code profiles)")
 	cmd.Flags().StringSliceVar(&tags, "tag", nil, "tag (repeatable)")
 	cmd.Flags().StringVar(&group, "group", "", "group name (e.g. Work/Frontend)")
 	cmd.Flags().BoolVar(&favorite, "favorite", false, "mark as favorite")
