@@ -37,6 +37,9 @@ pjx list --json
 # List (delimited, for shell launcher scripts)
 pjx list --format=delimited
 
+# Interactive TUI picker (fuzzy search, preview pane)
+pjx tui
+
 # Open
 pjx open my-app
 pjx open my-app --new-window
