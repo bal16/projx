@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS projects (
     name        TEXT NOT NULL,
     path        TEXT NOT NULL UNIQUE,
     editor      TEXT NOT NULL DEFAULT '',
+    profile     TEXT NOT NULL DEFAULT '',
     tags        TEXT NOT NULL DEFAULT '[]',
     group_name  TEXT NOT NULL DEFAULT '',
     favorite    INTEGER NOT NULL DEFAULT 0,
@@ -35,6 +36,8 @@ func (d *DB) migrate() error {
 	if _, err := d.Exec(createSchema); err != nil {
 		return fmt.Errorf("create schema: %w", err)
 	}
+	// Migrate older databases: add profile column if missing.
+	_, _ = d.Exec("ALTER TABLE projects ADD COLUMN profile TEXT NOT NULL DEFAULT ''")
 	// Record version if absent.
 	var v int
 	err := d.QueryRow("SELECT COALESCE((SELECT version FROM schema_version LIMIT 1), 0)").Scan(&v)

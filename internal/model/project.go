@@ -9,6 +9,7 @@ type Project struct {
 	Name       string    `json:"name"`
 	Path       string    `json:"path"`
 	Editor     string    `json:"editor,omitempty"`
+	Profile    string    `json:"profile,omitempty"`
 	Tags       []string  `json:"tags,omitempty"`
 	Group      string    `json:"group,omitempty"`
 	Favorite   bool      `json:"favorite"`

@@ -23,7 +23,7 @@ func NewRepository(db *DB) *Repository {
 
 // List returns all projects, optionally filtered by tag or group.
 func (r *Repository) List(tag, group string, favoritesOnly bool) ([]model.Project, error) {
-	q := `SELECT id,name,path,editor,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at FROM projects`
+	q := `SELECT id,name,path,editor,profile,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at FROM projects`
 	var args []any
 	var conds []string
 	if tag != "" {
@@ -62,7 +62,7 @@ func (r *Repository) List(tag, group string, favoritesOnly bool) ([]model.Projec
 // Get returns a project by id or name (case-insensitive name match).
 func (r *Repository) Get(idOrName string) (*model.Project, error) {
 	row := r.db.QueryRow(
-		`SELECT id,name,path,editor,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at
+		`SELECT id,name,path,editor,profile,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at
 		 FROM projects WHERE id = ? OR LOWER(name) = LOWER(?) LIMIT 1`, idOrName, idOrName)
 	p, err := scanProject(row)
 	if err != nil {
@@ -74,7 +74,7 @@ func (r *Repository) Get(idOrName string) (*model.Project, error) {
 // GetByPath returns a project by its path.
 func (r *Repository) GetByPath(path string) (*model.Project, error) {
 	row := r.db.QueryRow(
-		`SELECT id,name,path,editor,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at
+		`SELECT id,name,path,editor,profile,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at
 		 FROM projects WHERE path = ? LIMIT 1`, path)
 	p, err := scanProject(row)
 	if err != nil {
@@ -100,9 +100,9 @@ func (r *Repository) Add(p *model.Project) error {
 	}
 
 	_, err := r.db.Exec(
-		`INSERT INTO projects (id,name,path,editor,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at)
-		 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		p.ID, p.Name, p.Path, p.Editor, string(tagsJSON), p.Group,
+		`INSERT INTO projects (id,name,path,editor,profile,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at)
+		 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		p.ID, p.Name, p.Path, p.Editor, p.Profile, string(tagsJSON), p.Group,
 		boolToInt(p.Favorite), timeToUnix(p.LastOpened), p.GitBranch, p.GitDirty, p.Remote,
 		p.CreatedAt.Unix(), p.UpdatedAt.Unix(),
 	)
@@ -117,8 +117,8 @@ func (r *Repository) Update(p *model.Project) error {
 		tagsJSON = []byte("[]")
 	}
 	_, err := r.db.Exec(
-		`UPDATE projects SET name=?,path=?,editor=?,tags=?,group_name=?,favorite=?,last_opened=?,git_branch=?,git_dirty=?,remote=?,updated_at=? WHERE id=?`,
-		p.Name, p.Path, p.Editor, string(tagsJSON), p.Group,
+		`UPDATE projects SET name=?,path=?,editor=?,profile=?,tags=?,group_name=?,favorite=?,last_opened=?,git_branch=?,git_dirty=?,remote=?,updated_at=? WHERE id=?`,
+		p.Name, p.Path, p.Editor, p.Profile, string(tagsJSON), p.Group,
 		boolToInt(p.Favorite), timeToUnix(p.LastOpened), p.GitBranch, p.GitDirty, p.Remote,
 		p.UpdatedAt.Unix(), p.ID,
 	)
@@ -178,7 +178,7 @@ func scanProject(s scanner) (model.Project, error) {
 	var tagsJSON string
 	var fav, lastOpened, created, updated int64
 	var gitDirty int
-	err := s.Scan(&p.ID, &p.Name, &p.Path, &p.Editor, &tagsJSON, &p.Group,
+	err := s.Scan(&p.ID, &p.Name, &p.Path, &p.Editor, &p.Profile, &tagsJSON, &p.Group,
 		&fav, &lastOpened, &p.GitBranch, &gitDirty, &p.Remote, &created, &updated)
 	if err != nil {
 		return p, err
