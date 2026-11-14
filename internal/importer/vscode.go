@@ -68,7 +68,6 @@ func (v VSCodeImporter) Import() ([]model.Project, error) {
 
 	// Keep the variant name ("code", "cursor", ...) so it matches
 	// EditorCommands and the vscode-variant handling in open.
-	editor := v.Variant
 	var out []model.Project
 	for _, e := range payload.Entries {
 		p := ""
@@ -88,10 +87,9 @@ func (v VSCodeImporter) Import() ([]model.Project, error) {
 			name = filepath.Base(p)
 		}
 		out = append(out, model.Project{
-			Name:   name,
-			Path:   p,
-			Editor: editor,
-			Tags:   []string{},
+			Name: name,
+			Path: p,
+			Tags: []string{},
 		})
 	}
 	return out, nil

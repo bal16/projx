@@ -108,7 +108,6 @@ func (ZedImporter) Import() ([]model.Project, error) {
 			out = append(out, model.Project{
 				Name:       name,
 				Path:       pp,
-				Editor:     "zed",
 				Tags:       []string{},
 				Remote:     r,
 				LastOpened: parsed,

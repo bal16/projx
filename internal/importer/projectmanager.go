@@ -41,14 +41,6 @@ func (p ProjectManagerImporter) Import() ([]model.Project, error) {
 		return nil, fmt.Errorf("parse projects.json: %w", err)
 	}
 
-	editor := "code"
-	switch p.Variant {
-	case "codium":
-		editor = "codium"
-	case "cursor":
-		editor = "cursor"
-	}
-
 	var out []model.Project
 	for _, r := range raw {
 		if !r.Enabled {
@@ -68,7 +60,6 @@ func (p ProjectManagerImporter) Import() ([]model.Project, error) {
 		out = append(out, model.Project{
 			Name:    name,
 			Path:    r.RootPath,
-			Editor:  editor,
 			Profile: r.Profile,
 			Tags:    tags,
 		})
@@ -80,7 +71,6 @@ func (p ProjectManagerImporter) Import() ([]model.Project, error) {
 			out = append(out, model.Project{
 				Name:    name + " (extra)",
 				Path:    extra,
-				Editor:  editor,
 				Profile: r.Profile,
 				Tags:    append([]string{}, tags...),
 			})
