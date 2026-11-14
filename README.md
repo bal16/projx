@@ -54,6 +54,24 @@ pjx open my-app --new-window
 pjx tui
 ```
 
+## Shell completion
+
+`pjx completion` prints the script — source or install it for your shell:
+
+```sh
+# bash
+source <(pjx completion bash)
+
+# zsh
+source <(pjx completion zsh)
+
+# fish
+pjx completion fish | source
+```
+
+For permanent setup (and zsh `fpath`/`compinit` notes), see
+[docs/USAGE.md#shell-completion](docs/USAGE.md#shell-completion).
+
 ## Plugins
 
 - **Noctalia v5** — `plugins/project-manager/` (launcher trigger `pjx`)

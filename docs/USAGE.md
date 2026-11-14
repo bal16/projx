@@ -40,6 +40,7 @@ pjx open my-app --editor vscode --profile "Personal"
 
 # Set default profile per editor
 pjx config set editor_profiles '{"code":"Default VSCode Profile"}'
+```
 
 ## VS Code profiles
 
@@ -57,7 +58,61 @@ pjx set my-app --editor code --profile "My New Profile"
 
 VS Code creates the profile automatically on first use of `--profile <name>`.
 `pjx set --profile` warns if the profile is not among known ones.
+
+## Shell completion
+
+`pjx completion <shell>` prints a completion script to stdout — it must be
+**sourced** or installed for your shell (printing alone does not enable it).
+
+### Bash
+
+```sh
+# current session only
+source <(pjx completion bash)
+
+# permanent (system-wide, requires bash-completion)
+pjx completion bash | sudo tee /etc/bash_completion.d/pjx >/dev/null
+
+# permanent (per-user)
+mkdir -p ~/.local/share/bash-completion/completions
+pjx completion bash > ~/.local/share/bash-completion/completions/pjx
 ```
+
+Open a new terminal (or `source ~/.bashrc`) after a permanent install.
+
+### Zsh
+
+```sh
+# current session only
+source <(pjx completion zsh)
+
+# permanent
+mkdir -p ~/.zfunc
+pjx completion zsh > ~/.zfunc/_pjx
+```
+
+Make sure `~/.zfunc` is in your `fpath` **before** `compinit` in `~/.zshrc`:
+
+```zsh
+fpath=(~/.zfunc $fpath)
+autoload -Uz compinit && compinit
+```
+
+Open a new terminal. If completions do not appear, rebuild the cache:
+`rm -f ~/.zcompdump* && exec zsh`.
+
+### Fish
+
+```sh
+# current session only
+pjx completion fish | source
+
+# permanent
+mkdir -p ~/.config/fish/completions
+pjx completion fish > ~/.config/fish/completions/pjx.fish
+```
+
+Fish loads files in `~/.config/fish/completions/` automatically in new sessions.
 
 ## Workspace sets
 

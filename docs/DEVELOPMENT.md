@@ -59,6 +59,9 @@ projx/
 
 ```sh
 pjx completion bash > /etc/bash_completion.d/pjx
-pjx completion zsh > ~/.zfunc/_pjx
+pjx completion zsh  > ~/.zfunc/_pjx
 pjx completion fish > ~/.config/fish/completions/pjx.fish
 ```
+
+See [docs/USAGE.md#shell-completion](docs/USAGE.md#shell-completion) for
+session-only setup and notes (e.g. zsh `fpath`/`compinit`).
