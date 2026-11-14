@@ -91,7 +91,7 @@ QtObject {
                 if (ToastService) ToastService.showInfo(out.split("\n").join(", ").substring(0, 200));
                 return;
             }
-            if (action === "scan" || action === "import-zed" || action === "import-all" || action === "add")
+            if (action === "scan" || action === "import-zed" || action === "import-all" || action === "import-project-manager" || action === "add")
                 root.refreshCache();
             if (exitCode !== 0 && ToastService)
                 ToastService.showInfo("pjx: command failed (exit " + exitCode + ")");
@@ -154,6 +154,9 @@ QtObject {
             } else if (actionData === "import-all") {
                 runAction([exe, "import", "--all"], "import-all");
                 if (ToastService) ToastService.showInfo("Importing from all editors");
+            } else if (actionData === "import-project-manager") {
+                runAction([exe, "import", "project-manager"], "import-project-manager");
+                if (ToastService) ToastService.showInfo("Importing from Project Manager");
             } else if (actionData.indexOf("editor-") === 0) {
                 var ed = actionData.substring(7);
                 Quickshell.execDetached([exe, "config", "set", "default_editor", ed]);

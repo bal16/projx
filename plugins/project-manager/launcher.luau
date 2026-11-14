@@ -107,6 +107,11 @@ function onActivate(id)
                 noctalia.notify("projx", "Import complete")
                 cachedProjects = nil
             end)
+        elseif action == "import-project-manager" then
+            noctalia.runAsync("pjx import project-manager 2>&1", function(_)
+                noctalia.notify("projx", "Imported from Project Manager")
+                cachedProjects = nil
+            end)
         elseif action == "refresh" then
             cachedProjects = nil
             noctalia.notify("projx", "Refreshed")

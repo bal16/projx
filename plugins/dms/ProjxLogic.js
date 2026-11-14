@@ -48,6 +48,7 @@ function utilItems(filter) {
         { name: "Scan directories for projects", comment: "run pjx scan on configured roots", action: "util:scan", icon: "material:search", categories: ["projx"] },
         { name: "Import projects from Zed", comment: "one-time migration", action: "util:import-zed", icon: "material:download", categories: ["projx"] },
         { name: "Import from all editors", comment: "zed, vscode, cursor, ...", action: "util:import-all", icon: "material:download", categories: ["projx"] },
+        { name: "Import from Project Manager (VS Code)", comment: "alefragnani.project-manager projects.json", action: "util:import-project-manager", icon: "material:download", categories: ["projx"] },
         { name: "Set default editor: zed", comment: "pjx config set default_editor zed", action: "util:editor-zed", icon: "material:code", categories: ["projx"] },
         { name: "Set default editor: vscode", comment: "pjx config set default_editor code", action: "util:editor-code", icon: "material:code", categories: ["projx"] },
         { name: "Set default editor: nvim", comment: "pjx config set default_editor nvim", action: "util:editor-nvim", icon: "material:code", categories: ["projx"] },
