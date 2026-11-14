@@ -1,5 +1,5 @@
 {
-  "scan_roots": ["~/projects", "~/workspace"],
+  "scan_roots": ["~/projects", "~/code"],
   "scan_max_depth": 2,
   "scan_markers": [".git", "Cargo.toml", "package.json", "go.mod", "pyproject.toml"],
   "default_editor": "zed",

@@ -33,7 +33,7 @@ Resolution order:
 pjx config                          # show full config
 pjx config get default_editor
 pjx config set default_editor zed
-pjx config set scan_roots '["~/projects","~/workspace"]'
+pjx config set scan_roots '["~/projects","~/code"]'
 pjx config set scan_max_depth 3
 pjx config set editor_profiles '{"code":"Default VSCode Profile"}'
 ```

@@ -24,7 +24,7 @@ type Config struct {
 // DefaultConfig returns sensible defaults.
 func DefaultConfig() *Config {
 	return &Config{
-		ScanRoots:      []string{},
+		ScanRoots:      []string{"~/projects", "~/code"},
 		ScanMaxDepth:   2,
 		ScanMarkers:    []string{".git", "Cargo.toml", "package.json", "go.mod", "pyproject.toml", "pom.xml", "build.gradle"},
 		DefaultEditor:  "zed",
