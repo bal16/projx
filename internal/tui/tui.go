@@ -285,11 +285,10 @@ func (m Model) View() string {
 
 	// Preview
 	var previewLines []string
-	if m.lastOutput != "" {
-		for _, line := range strings.Split(strings.TrimSpace(m.lastOutput), "\n") {
-			previewLines = append(previewLines, line)
-		}
-	} else if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+	switch {
+	case m.lastOutput != "":
+		previewLines = append(previewLines, strings.Split(strings.TrimSpace(m.lastOutput), "\n")...)
+	case len(m.filtered) > 0 && m.selected < len(m.filtered):
 		p := m.filtered[m.selected]
 		previewLines = append(previewLines, headerStyle.Render("Preview"))
 		previewLines = append(previewLines, "Name:   "+p.Name)
@@ -313,7 +312,7 @@ func (m Model) View() string {
 		if !p.LastOpened.IsZero() {
 			previewLines = append(previewLines, "Opened: "+p.LastOpened.Format("2006-01-02 15:04"))
 		}
-	} else {
+	default:
 		previewLines = append(previewLines, dimStyle.Render("no selection"))
 	}
 
