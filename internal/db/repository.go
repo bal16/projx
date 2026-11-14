@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -61,15 +62,46 @@ func (r *Repository) List(tag, group string, favoritesOnly bool) ([]model.Projec
 }
 
 // Get returns a project by id or name (case-insensitive name match).
+// If multiple projects share the same name, an error is returned.
 func (r *Repository) Get(idOrName string) (*model.Project, error) {
+	// Prefer exact id match.
 	row := r.db.QueryRow(
 		`SELECT id,name,path,editor,profile,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at
-		 FROM projects WHERE id = ? OR LOWER(name) = LOWER(?) LIMIT 1`, idOrName, idOrName)
+		 FROM projects WHERE id = ? LIMIT 1`, idOrName)
 	p, err := scanProject(row)
+	if err == nil {
+		return &p, nil
+	}
+	// Fall back to name match, but detect ambiguity.
+	rows, err := r.db.Query(
+		`SELECT id,name,path,editor,profile,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at
+		 FROM projects WHERE LOWER(name) = LOWER(?)`, idOrName)
 	if err != nil {
 		return nil, err
 	}
-	return &p, nil
+	defer func() { _ = rows.Close() }()
+	var matches []model.Project
+	for rows.Next() {
+		pp, err := scanProject(rows)
+		if err != nil {
+			return nil, err
+		}
+		matches = append(matches, pp)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("project not found: %s", idOrName)
+	}
+	if len(matches) > 1 {
+		names := make([]string, 0, len(matches))
+		for _, m := range matches {
+			names = append(names, m.ID)
+		}
+		return nil, fmt.Errorf("ambiguous project name %q; use id: %s", idOrName, strings.Join(names, ", "))
+	}
+	return &matches[0], nil
 }
 
 // GetByPath returns a project by its path.

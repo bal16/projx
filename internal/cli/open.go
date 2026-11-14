@@ -93,6 +93,8 @@ func newOpenCmd() *cobra.Command {
 				switch ed {
 				case "zed":
 					argv = []string{"-a", p.Path}
+				case "code", "codium", "cursor", "windsurf", "antigravity":
+					argv = []string{"--add", p.Path}
 				default:
 					argv = []string{p.Path}
 				}
