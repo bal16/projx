@@ -2,41 +2,15 @@
 
 -- Bar widget showing the current project name (based on $PWD).
 
+local common = require("./lib/common.luau")
+
 local cachedProjects = nil
-
-local function trim(s)
-    return (s or ""):match("^%s*(.-)%s*$")
-end
-
-local function splitFields(line)
-    local fields = {}
-    local start = 1
-    local sep = "\31"
-    while true do
-        local sepStart, sepEnd = line:find(sep, start, true)
-        if not sepStart then
-            table.insert(fields, line:sub(start))
-            break
-        end
-        table.insert(fields, line:sub(start, sepStart - 1))
-        start = sepEnd + 1
-    end
-    return fields
-end
 
 local function loadProjects(onDone)
     noctalia.runAsync("pjx list --format=delimited 2>/dev/null", function(result)
         local projects = {}
         if result.exitCode == 0 and type(result.stdout) == "string" then
-            for line in result.stdout:gmatch("[^\n]+") do
-                local f = splitFields(line)
-                if trim(f[1]) ~= "" then
-                    table.insert(projects, {
-                        name = trim(f[2]),
-                        path = trim(f[3]),
-                    })
-                end
-            end
+            projects = common.parseProjects(result.stdout)
         end
         cachedProjects = projects
         onDone(projects)
@@ -52,7 +26,7 @@ local function currentProjectName(projects)
     local bestLen = 0
     for _, p in ipairs(projects) do
         if p.path ~= "" and pwd:sub(1, #p.path) == p.path and #p.path > bestLen then
-            best = p.name
+            best = common.projectName(p)
             bestLen = #p.path
         end
     end
@@ -75,7 +49,6 @@ function update()
 end
 
 function onClick()
-    -- Refresh cache and open TUI
     cachedProjects = nil
     update()
     noctalia.runAsync("pjx tui >/dev/null 2>&1 &")

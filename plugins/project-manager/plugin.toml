@@ -1,8 +1,8 @@
 id = "projx/project-manager"
 name = "Project Manager (projx)"
-version = "0.2.0"
+version = "0.3.0"
 author = "projx"
-plugin_api = 3
+plugin_api = 22
 license = "MIT"
 description = "Universal project manager. Lists and launches projects from pjx (zed, vscode, nvim, ...) via the Noctalia launcher."
 # Requires pjx binary on PATH (install via: go install github.com/bal16/projx/cmd/pjx@latest)
