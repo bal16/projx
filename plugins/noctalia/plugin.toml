@@ -5,6 +5,7 @@ author = "projx"
 plugin_api = 3
 license = "MIT"
 description = "Universal project manager. Lists and launches projects from pjx (zed, vscode, nvim, ...) via the Noctalia launcher."
+# Requires pjx binary on PATH (install via: go install github.com/bal16/projx/cmd/pjx@latest)
 dependencies = ["pjx", "nohup"]
 
 [[launcher_provider]]
