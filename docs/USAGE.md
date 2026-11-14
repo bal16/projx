@@ -16,6 +16,8 @@ pjx group <project> <group-name>
 pjx set <project> [--name N] [--editor E] [--profile P] [--group G] [--favorite[=bool]] [--tag T] [--untag T]
 pjx refresh [project]                             # refresh cached git status
 pjx doctor [--prune]                              # check/prune missing paths
+pjx profiles [list [--json]]                      # list VS Code profiles
+pjx profiles create <name>                    # create a new VS Code profile
 pjx config [get|set <key> <value>]
 pjx export [file]                                 # export projects to JSON
 pjx import-file <file>                            # import projects from JSON
@@ -38,6 +40,23 @@ pjx open my-app --editor vscode --profile "Personal"
 
 # Set default profile per editor
 pjx config set editor_profiles '{"code":"Default VSCode Profile"}'
+
+## VS Code profiles
+
+```sh
+# List known profiles (from VS Code sync data + profile directories)
+pjx profiles
+pjx profiles list --json
+
+# Create a new profile (launches VS Code with that profile)
+pjx profiles create "My New Profile"
+
+# Use a profile on a project
+pjx set my-app --editor code --profile "My New Profile"
+```
+
+VS Code creates the profile automatically on first use of `--profile <name>`.
+`pjx set --profile` warns if the profile is not among known ones.
 ```
 
 ## Workspace sets
