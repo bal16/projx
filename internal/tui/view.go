@@ -19,24 +19,8 @@ func (m Model) View() string {
 		m.width = 80
 	}
 
-	if m.editing {
-		var b strings.Builder
-		b.WriteString(headerStyle.Render("projx") + "  " + dimStyle.Render("[edit] "+m.status) + "\n")
-		b.WriteString(strings.Repeat("-", m.width) + "\n")
-		for i, in := range m.editInputs {
-			b.WriteString(in.View() + "\n")
-			switch i {
-			case 1:
-				b.WriteString("  " + dimStyle.Render("empty = follow default_editor") + "\n")
-			case 2:
-				b.WriteString("  " + dimStyle.Render("VS Code profile (empty = none)") + "\n")
-			case 3:
-				b.WriteString("  " + dimStyle.Render("comma separated") + "\n")
-			}
-		}
-		b.WriteString(strings.Repeat("-", m.width) + "\n")
-		b.WriteString(dimStyle.Render("Tab/arrows: field   Enter: save   Esc: cancel"))
-		return b.String()
+	if m.edit.Active() {
+		return m.edit.View(m.status, m.width)
 	}
 
 	var b strings.Builder
@@ -102,26 +86,7 @@ func (m Model) View() string {
 	var previewLines []string
 	switch {
 	case m.mode == "command":
-		previewLines = append(previewLines, headerStyle.Render("Commands"))
-		if len(m.cmdSugs) == 0 {
-			previewLines = append(previewLines, dimStyle.Render("  (no matches)"))
-		} else {
-			hi := m.cmdSugSel
-			cur := strings.TrimSpace(m.input.Value())
-			for i, s := range m.cmdSugs {
-				if s == cur {
-					hi = i
-					break
-				}
-			}
-			for i, s := range m.cmdSugs {
-				if i == hi {
-					previewLines = append(previewLines, selStyle.Render("> "+s))
-				} else {
-					previewLines = append(previewLines, "  "+s)
-				}
-			}
-		}
+		previewLines = append(previewLines, m.cmd.PreviewLines(strings.TrimSpace(m.input.Value()))...)
 	case m.lastOutput != "":
 		previewLines = append(previewLines, strings.Split(strings.TrimSpace(m.lastOutput), "\n")...)
 	case len(m.filtered) > 0 && m.selected < len(m.filtered):

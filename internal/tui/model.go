@@ -28,12 +28,8 @@ type Model struct {
 	opened       bool
 	openPath     string
 	openNew      bool
-	editing      bool
-	editIdx      int
-	editID       string
-	editInputs   []textinput.Model
-	cmdSugs      []string
-	cmdSugSel    int
+	edit         EditForm
+	cmd          CommandPalette
 }
 
 type projectsMsg struct{ projects []model.Project }
@@ -51,20 +47,13 @@ func New(repo *db.Repository) Model {
 	ti.CharLimit = 64
 	ti.Width = 40
 
-	m := Model{
-		repo:       repo,
-		input:      ti,
-		mode:       "search",
-		status:     "loading...",
-		editInputs: make([]textinput.Model, 5),
+	return Model{
+		repo:   repo,
+		input:  ti,
+		mode:   "search",
+		status: "loading...",
+		edit:   NewEditForm(),
 	}
-	for i, label := range []string{"Name:", "Editor:", "Profile:", "Tags:", "Group:"} {
-		in := textinput.New()
-		in.Prompt = label + " "
-		in.CharLimit = 128
-		m.editInputs[i] = in
-	}
-	return m
 }
 
 // Init loads projects.

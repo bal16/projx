@@ -5,41 +5,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/bal16/projx/internal/model"
 )
-
-var cmdSuggestionsBase = []string{
-	"add", "config", "doctor", "export", "favorite", "group", "help",
-	"import", "list", "open", "profiles", "refresh", "remove", "rename",
-	"scan", "set", "tag", "tui", "untag", "version", "ws",
-}
-
-func (m *Model) updateCmdSuggestions() {
-	val := m.input.Value()
-	// complete first token only (simple, lazyvim-like command completion)
-	if strings.Contains(val, " ") {
-		m.cmdSugs = nil
-		m.cmdSugSel = 0
-		return
-	}
-	prefix := strings.ToLower(strings.TrimSpace(val))
-	if prefix == "" {
-		m.cmdSugs = append([]string(nil), cmdSuggestionsBase...)
-		m.cmdSugSel = 0
-		return
-	}
-	var out []string
-	for _, c := range cmdSuggestionsBase {
-		if strings.HasPrefix(c, prefix) {
-			out = append(out, c)
-		}
-	}
-	m.cmdSugs = out
-	m.cmdSugSel = 0
-}
 
 // Update handles messages and input.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -48,9 +17,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.input.Width = msg.Width - 4
-		for i := range m.editInputs {
-			m.editInputs[i].Width = msg.Width - 12
-		}
+		m.edit.SetWidth(msg.Width)
 		return m, nil
 
 	case projectsMsg:
@@ -78,54 +45,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		key := msg.String()
 
-		// Edit mode: form for the selected project.
-		if m.editing {
-			switch key {
-			case "esc":
-				m.editing = false
-				return m, nil
-			case "enter":
-				var ed model.Project
-				for _, p := range m.projects {
-					if p.ID == m.editID {
-						ed = p
-					}
-				}
-				if ed.ID != "" {
-					if v := strings.TrimSpace(m.editInputs[0].Value()); v != "" {
-						ed.Name = v
-					}
-					ed.Editor = strings.TrimSpace(m.editInputs[1].Value())
-					ed.Profile = strings.TrimSpace(m.editInputs[2].Value())
-					ed.Tags = splitCSV(m.editInputs[3].Value())
-					ed.Group = strings.TrimSpace(m.editInputs[4].Value())
-					if err := m.repo.Update(&ed); err != nil {
-						m.status = "error: " + err.Error()
-						return m, nil
-					}
-					m.editing = false
-					m.status = "updated " + ed.Name
-					return m, loadProjectsCmd(m.repo)
-				}
-				m.editing = false
-				return m, nil
-			case "tab", "down", "ctrl+j", "ctrl+n":
-				m.editIdx = (m.editIdx + 1) % len(m.editInputs)
-			case "shift+tab", "up", "ctrl+k", "ctrl+p":
-				m.editIdx = (m.editIdx + len(m.editInputs) - 1) % len(m.editInputs)
-			default:
-				var c tea.Cmd
-				m.editInputs[m.editIdx], c = m.editInputs[m.editIdx].Update(msg)
-				return m, c
+		if m.edit.Active() {
+			cmd, status := m.edit.Update(msg, m.repo, m.projects)
+			if status != "" {
+				m.status = status
 			}
-			for i := range m.editInputs {
-				if i == m.editIdx {
-					m.editInputs[i].Focus()
-				} else {
-					m.editInputs[i].Blur()
-				}
-			}
-			return m, nil
+			return m, cmd
 		}
 
 		// Command mode
@@ -135,36 +60,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.mode = "normal"
 				m.input.SetValue("")
 				m.input.Blur()
-				m.cmdSugs = nil
+				m.cmd.Reset()
 				return m, nil
 			case "enter":
-				cmd := strings.TrimSpace(m.input.Value())
+				cmdStr := strings.TrimSpace(m.input.Value())
 				m.input.SetValue("")
 				m.mode = "normal"
 				m.input.Blur()
-				m.cmdSugs = nil
-				if cmd == "" {
+				m.cmd.Reset()
+				if cmdStr == "" {
 					return m, nil
 				}
-				return m, m.runCommand(cmd)
+				return m, m.runCommand(cmdStr)
 			case "tab":
-				if len(m.cmdSugs) > 0 {
-					m.input.SetValue(m.cmdSugs[m.cmdSugSel])
-					m.input.CursorEnd()
-					m.cmdSugSel = (m.cmdSugSel + 1) % len(m.cmdSugs)
-				}
+				m.cmd.CompleteNext(&m.input)
 				return m, nil
 			case "shift+tab":
-				if len(m.cmdSugs) > 0 {
-					m.cmdSugSel = (m.cmdSugSel - 1 + len(m.cmdSugs)) % len(m.cmdSugs)
-					m.input.SetValue(m.cmdSugs[m.cmdSugSel])
-					m.input.CursorEnd()
-				}
+				m.cmd.CompletePrev(&m.input)
 				return m, nil
 			}
 			var c tea.Cmd
 			m.input, c = m.input.Update(msg)
-			m.updateCmdSuggestions()
+			m.cmd.UpdateSuggestions(m.input.Value())
 			return m, c
 		}
 
@@ -279,7 +196,7 @@ func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
 		m.input.Placeholder = "command (scan, import, favorite, set, ws, config, doctor, refresh, help)"
 		m.lastOutput = ""
 		m.showProfiles = false
-		m.updateCmdSuggestions()
+		m.cmd.UpdateSuggestions("")
 	case "enter", "o":
 		if len(m.filtered) > 0 && m.selected < len(m.filtered) {
 			p := m.filtered[m.selected]
@@ -321,30 +238,7 @@ func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
 		m.lastOutput = ""
 	case "e":
 		if len(m.filtered) > 0 && m.selected < len(m.filtered) {
-			p := m.filtered[m.selected]
-			m.editing = true
-			m.editID = p.ID
-			m.editIdx = 0
-			if len(m.editInputs) == 0 {
-				m.editInputs = make([]textinput.Model, 5)
-				for i, label := range []string{"Name:", "Editor:", "Profile:", "Tags:", "Group:"} {
-					m.editInputs[i] = textinput.New()
-					m.editInputs[i].Prompt = label + " "
-					m.editInputs[i].CharLimit = 128
-				}
-			}
-			vals := []string{p.Name, p.Editor, p.Profile, strings.Join(p.Tags, ", "), p.Group}
-			for i := range m.editInputs {
-				m.editInputs[i].SetValue(vals[i])
-				m.editInputs[i].CursorEnd()
-			}
-			for i := range m.editInputs {
-				if i == 0 {
-					m.editInputs[i].Focus()
-				} else {
-					m.editInputs[i].Blur()
-				}
-			}
+			m.edit.Open(m.filtered[m.selected])
 		}
 	case "?":
 		m.lastOutput = "Normal mode keys:\n  j/k or arrows: navigate\n  gg/G: top/bottom\n  / or i: search mode\n  :: command mode\n  Enter/o: open   O: open new window\n  e: edit project   d: delete project   f: toggle favorite\n  p: toggle profiles view   r: refresh list   ?: this help\n  q: quit"

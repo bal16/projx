@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
@@ -68,25 +67,19 @@ func TestEditProjectFlow(t *testing.T) {
 	}
 
 	m := Model{
-		repo:       repo,
-		width:      80,
-		height:     24,
-		mode:       "normal",
-		editInputs: make([]textinput.Model, 5),
+		repo:   repo,
+		width:  80,
+		height: 24,
+		mode:   "normal",
+		edit:   NewEditForm(),
 	}
 	m.projects, _ = repo.List("", "", false)
 	m.filtered = m.projects
 	m.selected = 0
 
-	for i, label := range []string{"Name:", "Editor:", "Profile:", "Tags:", "Group:"} {
-		in := textinput.New()
-		in.Prompt = label + " "
-		in.CharLimit = 128
-		m.editInputs[i] = in
-	}
 	up, _ := m.handleNormalMode("e")
 	m = up.(Model)
-	if !m.editing {
+	if !m.edit.Active() {
 		t.Fatal("editing not entered")
 	}
 	if m.View() == "" || !strings.Contains(m.View(), "Editor:") {
@@ -94,11 +87,11 @@ func TestEditProjectFlow(t *testing.T) {
 	}
 
 	// change fields: editor + tags
-	m.editInputs[1].SetValue("code")
-	m.editInputs[3].SetValue("web, api")
+	m.edit.inputs[1].SetValue("code")
+	m.edit.inputs[3].SetValue("web, api")
 	saved, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = saved.(Model)
-	if m.editing {
+	if m.edit.Active() {
 		t.Fatal("editing not closed after save")
 	}
 
@@ -121,7 +114,7 @@ func TestEditProjectFlow(t *testing.T) {
 	m.selected = 0
 	up, _ = m.handleNormalMode("e")
 	m = up.(Model)
-	m.editInputs[1].SetValue("vim")
+	m.edit.inputs[1].SetValue("vim")
 	canceled, _ := m.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	m = canceled.(Model)
 	got, _ = repo.Get("/tmp/alpha")
