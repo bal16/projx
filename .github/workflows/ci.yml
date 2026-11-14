@@ -19,19 +19,19 @@ jobs:
         run: go build ./...
       - name: Vet
         run: go vet ./...
-      - name: Format check
+      - name: Format check (gofmt)
         run: |
           if [ -n "$(gofmt -l .)" ]; then
             echo "gofmt issues:"
             gofmt -l .
             exit 1
           fi
-      - name: Format check
-        run: golangci-lint fmt --diff
       - name: Lint
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.13
+      - name: Format check (goimports)
+        run: golangci-lint fmt --diff
       - name: Test
         run: go test ./...
 
