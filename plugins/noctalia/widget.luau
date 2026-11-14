@@ -48,7 +48,6 @@ local function currentProjectName(projects)
     if pwd == "" then
         return nil
     end
-    -- find longest matching project path prefix
     local best = nil
     local bestLen = 0
     for _, p in ipairs(projects) do
@@ -66,15 +65,18 @@ function update()
         loadProjects(function(projects)
             local name = currentProjectName(projects)
             barWidget.setGlyph("folder")
-            barWidget.setText(name or "no project")
+            barWidget.setText(name or noctalia.tr("no-project") or "no project")
         end)
         return
     end
     local name = currentProjectName(cachedProjects)
     barWidget.setGlyph("folder")
-    barWidget.setText(name or "no project")
+    barWidget.setText(name or noctalia.tr("no-project") or "no project")
 end
 
 function onClick()
+    -- Refresh cache and open TUI
+    cachedProjects = nil
+    update()
     noctalia.runAsync("pjx tui >/dev/null 2>&1 &")
 end

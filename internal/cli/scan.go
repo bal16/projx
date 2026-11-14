@@ -11,80 +11,94 @@ import (
 	"github.com/bal16/projx/internal/model"
 )
 
-func newScanCmd() *cobra.Command {
-	var roots []string
-	var maxDepth int
-	var dryRun bool
+type scanParams struct {
+	roots    []string
+	maxDepth int
+	dryRun   bool
+}
 
+func runScan(a *App, roots []string, sp scanParams) error {
+	r := sp.roots
+	if len(r) == 0 {
+		r = a.Config.ScanRoots
+	}
+	if len(roots) > 0 {
+		r = append(r, roots...)
+	}
+	if len(r) == 0 {
+		return fmt.Errorf("no scan roots; pass roots or set scan_roots in config")
+	}
+	maxDepth := sp.maxDepth
+	if maxDepth <= 0 {
+		maxDepth = a.Config.ScanMaxDepth
+	}
+	sc := &discovery.Scanner{Markers: a.Config.ScanMarkers, MaxDepth: maxDepth}
+	found, err := sc.Scan(r)
+	if err != nil {
+		return err
+	}
+	added := 0
+	for _, f := range found {
+		if existing, _ := a.Repo.GetByPath(f.Path); existing != nil {
+			continue
+		}
+		p := &model.Project{
+			Name:   f.Name,
+			Path:   f.Path,
+			Editor: a.Config.DefaultEditor,
+			Tags:   []string{},
+		}
+		if gi := gitinfo.Inspect(f.Path); gi.IsRepo {
+			p.GitBranch = gi.Branch
+			p.GitDirty = gi.Dirty
+		}
+		if sp.dryRun {
+			fmt.Printf("[dry-run] would add %s (%s)\n", p.Name, p.Path)
+			continue
+		}
+		if err := a.Repo.Add(p); err != nil {
+			fmt.Printf("skip %s: %v\n", f.Path, err)
+			continue
+		}
+		added++
+		fmt.Printf("added %s\n", p.Name)
+	}
+	fmt.Printf("scanned %d found, %d added\n", len(found), added)
+
+	// persist roots/max-depth
+	if len(roots) > 0 {
+		merged := append([]string{}, a.Config.ScanRoots...)
+		for _, rr := range roots {
+			if !contains(merged, rr) {
+				merged = append(merged, rr)
+			}
+		}
+		a.Config.ScanRoots = merged
+	}
+	if maxDepth > 0 {
+		a.Config.ScanMaxDepth = maxDepth
+	}
+	_ = config.Save(a.Config, a.Repo)
+	return nil
+}
+
+func newScanCmd() *cobra.Command {
+	var sp scanParams
+	var roots []string
 	cmd := &cobra.Command{
 		Use:   "scan [roots...]",
 		Short: "Auto-discover projects in directories",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			a := requireApp()
-			if len(roots) == 0 {
-				roots = a.Config.ScanRoots
-			}
-			if len(args) > 0 {
-				roots = append(roots, args...)
-			}
-			if len(roots) == 0 {
-				return fmt.Errorf("no scan roots; pass roots or set scan_roots in config")
-			}
-			if maxDepth <= 0 {
-				maxDepth = a.Config.ScanMaxDepth
-			}
-			sc := &discovery.Scanner{Markers: a.Config.ScanMarkers, MaxDepth: maxDepth}
-			found, err := sc.Scan(roots)
-			if err != nil {
-				return err
-			}
-			added := 0
-			for _, f := range found {
-				if existing, _ := a.Repo.GetByPath(f.Path); existing != nil {
-					continue
-				}
-				p := &model.Project{
-					Name:   f.Name,
-					Path:   f.Path,
-					Editor: a.Config.DefaultEditor,
-					Tags:   []string{},
-				}
-				if gi := gitinfo.Inspect(f.Path); gi.IsRepo {
-					p.GitBranch = gi.Branch
-					p.GitDirty = gi.Dirty
-				}
-				if dryRun {
-					fmt.Printf("[dry-run] would add %s (%s)\n", p.Name, p.Path)
-					continue
-				}
-				if err := a.Repo.Add(p); err != nil {
-					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "skip %s: %v\n", f.Path, err)
-					continue
-				}
-				added++
-				fmt.Printf("added %s\n", p.Name)
-			}
-			fmt.Printf("scanned %d found, %d added\n", len(found), added)
-			// persist roots (if provided) and max-depth
-			if len(args) > 0 {
-				merged := append([]string{}, a.Config.ScanRoots...)
-				for _, r := range args {
-					if !contains(merged, r) {
-						merged = append(merged, r)
-					}
-				}
-				a.Config.ScanRoots = merged
-			}
-			if maxDepth > 0 {
-				a.Config.ScanMaxDepth = maxDepth
-			}
-			_ = config.Save(a.Config, a.Repo)
-			return nil
+			return runScan(requireApp(), args, scanParams{
+				roots:    roots,
+				maxDepth: sp.maxDepth,
+				dryRun:   sp.dryRun,
+			})
 		},
 	}
 	cmd.Flags().StringSliceVar(&roots, "roots", nil, "roots to scan (overrides config)")
-	cmd.Flags().IntVar(&maxDepth, "max-depth", 0, "max scan depth (0 = config default)")
-	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "show what would be added")
+	cmd.Flags().IntVar(&sp.maxDepth, "max-depth", 0, "max scan depth (0 = config default)")
+	cmd.Flags().BoolVar(&sp.dryRun, "dry-run", false, "show what would be added")
 	return cmd
 }
 
