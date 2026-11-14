@@ -132,6 +132,9 @@ pjx completion fish > ~/.config/fish/completions/pjx.fish
   - Arch: `pacman -S qt6-declarative`
   - Debian/Ubuntu: `apt install qt6-declarative-dev-tools`
 
+**Notes:**
+- The scanner does not follow symlinks by default (avoids cycles). Pass explicit roots if needed.
+- Go 1.27+ is required (uses modernc.org/sqlite pure-Go driver).
 **Luau (Noctalia plugin):**
 
 - `stylua` v2.x — `cargo install stylua` or download from [releases](https://github.com/JohnnyMorganz/StyLua/releases)
