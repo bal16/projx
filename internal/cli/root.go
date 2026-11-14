@@ -24,6 +24,7 @@ func NewRootCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "pjx",
 		Short: "projx - universal project manager for developers",
+		Version: "0.1.0",
 		Long: `pjx manages your projects/workspaces with aliases, tags, groups and
 git status, and launches them in your preferred editor (zed, vscode, nvim, ...).
 
