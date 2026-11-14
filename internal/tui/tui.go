@@ -311,7 +311,24 @@ func (m *Model) applyFilter() {
 			if out[i].Favorite != out[j].Favorite {
 				return out[i].Favorite
 			}
-			return false
+			// earlier match position in name wins
+			pi := strings.Index(strings.ToLower(out[i].Name), q)
+			pj := strings.Index(strings.ToLower(out[j].Name), q)
+			if pi != pj {
+				// unmatched (-1) sorts last
+				if pi < 0 {
+					return false
+				}
+				if pj < 0 {
+					return true
+				}
+				return pi < pj
+			}
+			// then last-opened desc
+			if !out[i].LastOpened.Equal(out[j].LastOpened) {
+				return out[i].LastOpened.After(out[j].LastOpened)
+			}
+			return out[i].Name < out[j].Name
 		})
 		m.filtered = out
 	}
