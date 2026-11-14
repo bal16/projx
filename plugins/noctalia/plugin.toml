@@ -1,6 +1,6 @@
 id = "projx/project-manager"
 name = "Project Manager (projx)"
-version = "0.1.0"
+version = "0.2.0"
 author = "projx"
 plugin_api = 3
 license = "MIT"

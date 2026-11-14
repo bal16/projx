@@ -25,7 +25,7 @@ func NewRootCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:     "pjx",
 		Short:   "projx - universal project manager for developers",
-		Version: "0.1.0",
+		Version: "0.2.0",
 		Long: `pjx manages your projects/workspaces with aliases, tags, groups and
 git status, and launches them in your preferred editor (zed, vscode, nvim, ...).
 
@@ -81,13 +81,22 @@ from an existing editor, and 'pjx list' (JSON) to feed a shell launcher.`,
 }
 
 func newVersionCmd() *cobra.Command {
-	return &cobra.Command{
+	var showPlugins bool
+	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print version",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("pjx 0.1.0")
+			fmt.Println("pjx 0.2.0")
+			if showPlugins {
+				fmt.Println("plugins:")
+				fmt.Println("  noctalia: 0.2.0 (plugins/noctalia)")
+				fmt.Println("  dms:      0.2.0 (plugins/dms)")
+				fmt.Println("  dms-widget: 0.2.0 (plugins/dms-widget)")
+			}
 		},
 	}
+	cmd.Flags().BoolVar(&showPlugins, "plugins", false, "also print plugin versions")
+	return cmd
 }
 
 // helper to require app

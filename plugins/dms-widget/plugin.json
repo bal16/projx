@@ -1,11 +1,15 @@
 {
   "id": "projxCurrentProject",
   "name": "projx Current Project",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "projx",
   "description": "Bar widget showing the current project name (based on working directory)",
   "type": "widget",
   "component": "./CurrentProject.qml",
-  "capabilities": ["dankbar-widget"],
-  "permissions": ["settings_read"]
+  "capabilities": [
+    "dankbar-widget"
+  ],
+  "permissions": [
+    "settings_read"
+  ]
 }

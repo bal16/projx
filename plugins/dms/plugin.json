@@ -2,7 +2,7 @@
   "id": "projxLauncher",
   "name": "projx Project Manager",
   "description": "Quick access to projects managed by pjx (zed, vscode, nvim, ...)",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "projx",
   "icon": "folder",
   "type": "launcher",
