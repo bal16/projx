@@ -39,6 +39,47 @@ func runConfigGet(a *App, key string) error {
 	return nil
 }
 
+func configKeys() []string {
+	return []string{
+		"scan_roots\tJSON array of root directories to scan",
+		"default_editor\tDefault editor (e.g. zed, code, nvim)",
+		"scan_max_depth\tMax directory depth for scan",
+		"editor_profiles\tJSON object mapping editor -> default profile",
+		"editor_commands\tJSON object mapping editor -> binary/command",
+		"terminal\tTerminal emulator for TUI editors (empty = auto-detect)",
+	}
+}
+
+func configSetKeys(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) != 0 {
+		// completing <value>
+		switch args[0] {
+		case "default_editor":
+			return []string{"zed", "code", "nvim", "vim", "cursor", "codium", "windsurf"}, cobra.ShellCompDirectiveNoFileComp
+		case "terminal":
+			return []string{"kitty", "alacritty", "foot", "wezterm", "ghostty", "konsole", "gnome-terminal", "xterm"}, cobra.ShellCompDirectiveNoFileComp
+		case "scan_max_depth":
+			return []string{"1", "2", "3", "4", "5"}, cobra.ShellCompDirectiveNoFileComp
+		default:
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+	}
+	keys := configKeys()
+	// suggest dotted editor_commands.<name> entries
+	editors := []string{"zed", "code", "nvim", "vim", "cursor", "codium", "helix", "hx"}
+	for _, e := range editors {
+		keys = append(keys, "editor_commands."+e+"\tSet binary for "+e)
+	}
+	return keys, cobra.ShellCompDirectiveNoFileComp
+}
+
+func configGetKeys(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) != 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	return configKeys(), cobra.ShellCompDirectiveNoFileComp
+}
+
 func runConfigSet(a *App, key, value string) error {
 	switch {
 	case key == "editor_commands":
@@ -103,17 +144,19 @@ func newConfigCmd() *cobra.Command {
 		},
 	}
 	get := &cobra.Command{
-		Use:   "get <key>",
-		Short: "Get a config value (scan_roots, default_editor, scan_max_depth, editor_profiles, editor_commands, terminal)",
-		Args:  cobra.ExactArgs(1),
+		Use:               "get <key>",
+		Short:             "Get a config value (scan_roots, default_editor, scan_max_depth, editor_profiles, editor_commands, terminal)",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: configGetKeys,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runConfigGet(requireApp(), args[0])
 		},
 	}
 	set := &cobra.Command{
-		Use:   "set <key> <value>",
-		Short: "Set a config value",
-		Args:  cobra.ExactArgs(2),
+		Use:               "set <key> <value>",
+		Short:             "Set a config value",
+		Args:              cobra.ExactArgs(2),
+		ValidArgsFunction: configSetKeys,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runConfigSet(requireApp(), args[0], args[1])
 		},
