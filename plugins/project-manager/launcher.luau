@@ -244,21 +244,9 @@ local function showResults(query, projects, filter)
         end
     end
 
-    -- Utility entries.
-    local lower = filter:lower()
-    local showUtil = (filter == "")
-        or lower:find("scan", 1, true)
-        or lower:find("import", 1, true)
-        or lower:find("config", 1, true)
-        or lower:find("settings", 1, true)
-        or lower:find("editor", 1, true)
-        or lower:find("add", 1, true)
-        or lower:find("help", 1, true)
-        or lower:find("refresh", 1, true)
-    if showUtil then
-        for _, r in ipairs(utilRows(filter)) do
-            table.insert(rows, r)
-        end
+    -- Utility entries (searchable by title/subtitle).
+    for _, r in ipairs(utilRows(filter)) do
+        table.insert(rows, r)
     end
 
     -- pjx failed: surface the error instead of an empty list.
