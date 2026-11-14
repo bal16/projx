@@ -3,8 +3,9 @@ package cli
 import (
 	"fmt"
 
-	"github.com/bal16/projx/internal/gitinfo"
 	"github.com/spf13/cobra"
+
+	"github.com/bal16/projx/internal/gitinfo"
 )
 
 func newRefreshCmd() *cobra.Command {

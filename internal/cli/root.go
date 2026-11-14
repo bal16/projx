@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/bal16/projx/internal/config"
 	"github.com/bal16/projx/internal/db"
-	"github.com/spf13/cobra"
 )
 
 // App holds shared state for commands.

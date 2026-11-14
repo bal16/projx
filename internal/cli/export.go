@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bal16/projx/internal/model"
 	"github.com/spf13/cobra"
+
+	"github.com/bal16/projx/internal/model"
 )
 
 func newExportCmd() *cobra.Command {

@@ -3,8 +3,9 @@ package cli
 import (
 	"fmt"
 
-	"github.com/bal16/projx/internal/importer"
 	"github.com/spf13/cobra"
+
+	"github.com/bal16/projx/internal/importer"
 )
 
 func newImportCmd() *cobra.Command {

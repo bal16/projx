@@ -3,11 +3,12 @@ package cli
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/bal16/projx/internal/config"
 	"github.com/bal16/projx/internal/discovery"
 	"github.com/bal16/projx/internal/gitinfo"
 	"github.com/bal16/projx/internal/model"
-	"github.com/spf13/cobra"
 )
 
 func newScanCmd() *cobra.Command {

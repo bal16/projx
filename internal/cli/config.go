@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/bal16/projx/internal/config"
 	"github.com/spf13/cobra"
+
+	"github.com/bal16/projx/internal/config"
 )
 
 func newConfigCmd() *cobra.Command {

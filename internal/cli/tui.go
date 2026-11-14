@@ -5,8 +5,9 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/bal16/projx/internal/tui"
 	"github.com/spf13/cobra"
+
+	"github.com/bal16/projx/internal/tui"
 )
 
 func newTuiCmd() *cobra.Command {

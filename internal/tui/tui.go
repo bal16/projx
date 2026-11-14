@@ -7,11 +7,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/bal16/projx/internal/db"
-	"github.com/bal16/projx/internal/model"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/bal16/projx/internal/db"
+	"github.com/bal16/projx/internal/model"
 )
 
 // Model is the Bubble Tea model for the project picker.
