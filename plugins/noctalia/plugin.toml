@@ -13,3 +13,7 @@ name = "Projects"
 description = "Find and open projects managed by pjx."
 entry = "launcher.luau"
 trigger = "pjx"
+
+[[widget]]
+id = "current"
+entry = "widget.luau"
