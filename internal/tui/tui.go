@@ -18,21 +18,22 @@ import (
 
 // Model is the Bubble Tea model for the project picker.
 type Model struct {
-	repo       *db.Repository
-	projects   []model.Project
-	filtered   []model.Project
-	input      textinput.Model
-	mode       string // "search", "normal", or "command"
-	pendingKey string
-	selected   int
-	width      int
-	height     int
-	status     string
-	lastOutput string
-	quitting   bool
-	opened     bool
-	openPath   string
-	openNew    bool
+	repo         *db.Repository
+	projects     []model.Project
+	filtered     []model.Project
+	input        textinput.Model
+	mode         string // "search", "normal", or "command"
+	pendingKey   string
+	selected     int
+	width        int
+	height       int
+	status       string
+	lastOutput   string
+	showProfiles bool
+	quitting     bool
+	opened       bool
+	openPath     string
+	openNew      bool
 }
 
 // New creates a new TUI model.
@@ -186,6 +187,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return projectsMsg{projects}
 				}
 			default:
+				m.showProfiles = false
+				m.lastOutput = ""
 				var c tea.Cmd
 				m.input, c = m.input.Update(msg)
 				m.applyFilter()
@@ -284,14 +287,27 @@ func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
 			projects, _ := m.repo.List("", "", false)
 			return projectsMsg{projects}
 		}
+	case "p":
+		m.showProfiles = !m.showProfiles
+		if m.showProfiles {
+			return m, func() tea.Msg {
+				exe, _ := os.Executable()
+				c := exec.Command(exe, "profiles", "list", "--json")
+				out, _ := c.CombinedOutput()
+				return commandResultMsg{cmd: "profiles list", output: string(out)}
+			}
+		}
+		m.lastOutput = ""
 	case "?":
-		m.lastOutput = "Normal mode keys:\n  j/k or arrows: navigate\n  gg/G: top/bottom\n  / or i: search mode\n  :: command mode\n  Enter/o: open   O: open new window\n  d: delete project   f: toggle favorite\n  r: refresh list   ?: this help\n  q: quit"
+		m.lastOutput = "Normal mode keys:\n  j/k or arrows: navigate\n  gg/G: top/bottom\n  / or i: search mode\n  :: command mode\n  Enter/o: open   O: open new window\n  d: delete project   f: toggle favorite\n  p: toggle profiles view   r: refresh list   ?: this help\n  q: quit"
 	}
 	return m, nil
 }
 
 func (m *Model) applyFilter() {
-	m.lastOutput = ""
+	if !m.showProfiles {
+		m.lastOutput = ""
+	}
 	if m.mode == "command" {
 		return
 	}
