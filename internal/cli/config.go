@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -27,6 +28,9 @@ func runConfigGet(a *App, key string) error {
 	case "editor_profiles":
 		b, _ := json.Marshal(a.Config.EditorProfiles)
 		fmt.Println(string(b))
+	case "editor_commands":
+		b, _ := json.Marshal(a.Config.EditorCommands)
+		fmt.Println(string(b))
 	default:
 		return fmt.Errorf("unknown key: %s", key)
 	}
@@ -34,22 +38,42 @@ func runConfigGet(a *App, key string) error {
 }
 
 func runConfigSet(a *App, key, value string) error {
-	switch key {
-	case "scan_roots":
+	switch {
+	case key == "editor_commands":
+		var m map[string]string
+		if err := json.Unmarshal([]byte(value), &m); err != nil {
+			return fmt.Errorf("editor_commands must be JSON object: %w", err)
+		}
+		if a.Config.EditorCommands == nil {
+			a.Config.EditorCommands = map[string]string{}
+		}
+		for k, v := range m {
+			a.Config.EditorCommands[k] = v
+		}
+	case strings.HasPrefix(key, "editor_commands."):
+		editor := strings.TrimPrefix(key, "editor_commands.")
+		if editor == "" {
+			return fmt.Errorf("editor_commands.<editor> requires an editor name")
+		}
+		if a.Config.EditorCommands == nil {
+			a.Config.EditorCommands = map[string]string{}
+		}
+		a.Config.EditorCommands[editor] = value
+	case key == "scan_roots":
 		var roots []string
 		if err := json.Unmarshal([]byte(value), &roots); err != nil {
 			return fmt.Errorf("scan_roots must be JSON array: %w", err)
 		}
 		a.Config.ScanRoots = roots
-	case "default_editor":
+	case key == "default_editor":
 		a.Config.DefaultEditor = value
-	case "scan_max_depth":
+	case key == "scan_max_depth":
 		var n int
 		if _, err := fmt.Sscanf(value, "%d", &n); err != nil {
 			return err
 		}
 		a.Config.ScanMaxDepth = n
-	case "editor_profiles":
+	case key == "editor_profiles":
 		var m map[string]string
 		if err := json.Unmarshal([]byte(value), &m); err != nil {
 			return fmt.Errorf("editor_profiles must be JSON object: %w", err)
@@ -76,7 +100,7 @@ func newConfigCmd() *cobra.Command {
 	}
 	get := &cobra.Command{
 		Use:   "get <key>",
-		Short: "Get a config value (scan_roots, default_editor, scan_max_depth, editor_profiles)",
+		Short: "Get a config value (scan_roots, default_editor, scan_max_depth, editor_profiles, editor_commands)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runConfigGet(requireApp(), args[0])
