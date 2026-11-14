@@ -33,6 +33,19 @@ func newSetCmd() *cobra.Command {
 					p.Profile = ""
 				} else {
 					p.Profile = profile
+					// warn if profile not found among known VS Code profiles
+					if p.Editor == "code" || p.Editor == "codium" || p.Editor == "cursor" {
+						found := false
+						for _, vp := range listVSCodeProfiles() {
+							if vp.Name == profile || vp.ID == profile {
+								found = true
+								break
+							}
+						}
+						if !found {
+							fmt.Printf("warning: profile %q not found among known VS Code profiles (will be created on open)\n", profile)
+						}
+					}
 				}
 			}
 			if cmd.Flags().Changed("group") {
