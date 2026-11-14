@@ -26,6 +26,8 @@ jobs:
             gofmt -l .
             exit 1
           fi
+      - name: Format check
+        run: golangci-lint fmt --diff
       - name: Lint
         uses: golangci/golangci-lint-action@v7
         with:
