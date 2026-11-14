@@ -128,6 +128,13 @@ local function makeProjectRows(projects, filter)
 				subtitle = subtitle .. "]"
 			end
 			local icon = "folder"
+			if p.editor == "zed" then
+				icon = "zed"
+			elseif p.editor == "code" or p.editor == "codium" or p.editor == "cursor" then
+				icon = "code"
+			elseif p.editor == "nvim" or p.editor == "vim" then
+				icon = "terminal"
+			end
 			if p.favorite then
 				icon = "star"
 			end
@@ -224,7 +231,7 @@ local function showResults(query, projects, filter)
 		launcher.setResults(query, {
 			{
 				id = "",
-				title = "No projects found",
+				title = noctalia.tr("no-projects-found") or "No projects found",
 				subtitle = (filter ~= "") and ("no match for: " .. filter) or "run `pjx scan` to discover projects",
 				glyph = "folder-x",
 			},
@@ -249,8 +256,8 @@ function onQuery(query)
 	launcher.setResults(query, {
 		{
 			id = "",
-			title = "Loading projects...",
-			subtitle = "querying pjx",
+			title = noctalia.tr("loading") or "Loading projects...",
+			subtitle = noctalia.tr("loading-subtitle") or "querying pjx",
 			glyph = "loader",
 		},
 	})

@@ -132,7 +132,7 @@ QtObject {
                         name: pname,
                         comment: comment,
                         action: "project:" + ppath,
-                        icon: p.favorite ? "material:star" : "material:folder",
+                        icon: p.favorite ? "material:star" : (p.editor === "zed" ? "material:code" : (p.editor === "code" || p.editor === "codium" || p.editor === "cursor" ? "material:code" : "material:folder")),
                         categories: ["projx"]
                     });
                 }
