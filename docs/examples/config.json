@@ -1,0 +1,14 @@
+{
+  "scan_roots": ["~/projects", "~/workspace"],
+  "scan_max_depth": 2,
+  "scan_markers": [".git", "Cargo.toml", "package.json", "go.mod", "pyproject.toml"],
+  "default_editor": "zed",
+  "editor_commands": {
+    "zed": "zed",
+    "code": "code",
+    "nvim": "nvim"
+  },
+  "editor_profiles": {
+    "code": "Default VSCode Profile"
+  }
+}

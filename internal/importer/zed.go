@@ -2,6 +2,7 @@ package importer
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -69,20 +70,49 @@ func (ZedImporter) Import() ([]model.Project, error) {
 		}
 
 		parsed, _ := time.Parse("2006-01-02 15:04:05", ts)
-		name := filepath.Base(paths)
-		if remote != "" {
-			name += " (remote)"
-			paths = "ssh://" + remote + paths
+
+		// paths may contain multiple roots (newline or JSON array). Split.
+		var roots []string
+		trimmed := strings.TrimSpace(paths)
+		if strings.HasPrefix(trimmed, "[") {
+			var arr []string
+			if err := json.Unmarshal([]byte(trimmed), &arr); err == nil {
+				roots = arr
+			}
+		}
+		if len(roots) == 0 {
+			for _, line := range strings.Split(trimmed, "\n") {
+				line = strings.TrimSpace(line)
+				if line != "" {
+					roots = append(roots, line)
+				}
+			}
+		}
+		if len(roots) == 0 {
+			roots = []string{trimmed}
 		}
 
-		out = append(out, model.Project{
-			Name:       name,
-			Path:       paths,
-			Editor:     "zed",
-			Tags:       []string{},
-			Remote:     remote,
-			LastOpened: parsed,
-		})
+		for _, rp := range roots {
+			rp = strings.TrimSpace(rp)
+			if rp == "" {
+				continue
+			}
+			name := filepath.Base(rp)
+			pp := rp
+			r := remote
+			if r != "" {
+				name += " (remote)"
+				pp = "ssh://" + r + rp
+			}
+			out = append(out, model.Project{
+				Name:       name,
+				Path:       pp,
+				Editor:     "zed",
+				Tags:       []string{},
+				Remote:     r,
+				LastOpened: parsed,
+			})
+		}
 	}
 	return out, rows.Err()
 }
