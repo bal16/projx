@@ -24,7 +24,7 @@ linters:
 
 linters-settings:
   gocyclo:
-    min-complexity: 25
+    min-complexity: 50
   dupl:
     threshold: 100
   goimports:

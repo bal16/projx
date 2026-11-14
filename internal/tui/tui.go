@@ -192,96 +192,100 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Normal mode (Vim-like)
-		if m.pendingKey == "g" {
-			m.pendingKey = ""
-			if key == "g" {
-				m.selected = 0
-				return m, nil
-			}
-		}
-		switch key {
-		case "ctrl+c", "q":
-			m.quitting = true
-			return m, tea.Quit
-		case "j", "down":
-			if m.selected < len(m.filtered)-1 {
-				m.selected++
-			}
-		case "k", "up":
-			if m.selected > 0 {
-				m.selected--
-			}
-		case "g":
-			m.pendingKey = "g"
-		case "G":
-			if len(m.filtered) > 0 {
-				m.selected = len(m.filtered) - 1
-			}
-		case "/":
-			m.mode = "search"
-			m.input.Focus()
-			m.input.Placeholder = "search projects..."
-		case "i":
-			m.mode = "search"
-			m.input.Focus()
-			m.input.Placeholder = "search projects..."
-		case ":":
-			m.mode = "command"
-			m.input.SetValue("")
-			m.input.Focus()
-			m.input.Placeholder = "command (scan, import, favorite, set, ws, config, doctor, refresh, help)"
-		case "enter", "o":
-			if len(m.filtered) > 0 && m.selected < len(m.filtered) {
-				p := m.filtered[m.selected]
-				m.opened = true
-				m.openPath = p.Path
-				m.openNew = false
-				_ = m.repo.TouchLastOpened(p.ID)
-				return m, tea.Quit
-			}
-		case "O":
-			if len(m.filtered) > 0 && m.selected < len(m.filtered) {
-				p := m.filtered[m.selected]
-				m.opened = true
-				m.openPath = p.Path
-				m.openNew = true
-				_ = m.repo.TouchLastOpened(p.ID)
-				return m, tea.Quit
-			}
-		case "d":
-			if len(m.filtered) > 0 && m.selected < len(m.filtered) {
-				p := m.filtered[m.selected]
-				_ = m.repo.Remove(p.ID)
-				return m, func() tea.Msg {
-					projects, _ := m.repo.List("", "", false)
-					return projectsMsg{projects}
-				}
-			}
-		case "f":
-			if len(m.filtered) > 0 && m.selected < len(m.filtered) {
-				pp := m.filtered[m.selected]
-				pp.Favorite = !pp.Favorite
-				_ = m.repo.Update(&pp)
-				return m, func() tea.Msg {
-					projects, _ := m.repo.List("", "", false)
-					return projectsMsg{projects}
-				}
-			}
-		case "r":
-			return m, func() tea.Msg {
-				projects, _ := m.repo.List("", "", false)
-				return projectsMsg{projects}
-			}
-		case "?":
-			m.lastOutput = "Normal mode keys:\n  j/k or arrows: navigate\n  gg/G: top/bottom\n  / or i: search mode\n  :: command mode\n  Enter/o: open   O: open new window\n  d: delete project   f: toggle favorite\n  r: refresh list   ?: this help\n  q: quit"
-		}
-		return m, nil
+		return m.handleNormalMode(key)
 	}
 
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
 	return m, cmd
+}
+
+func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
+	// Normal mode (Vim-like)
+	if m.pendingKey == "g" {
+		m.pendingKey = ""
+		if key == "g" {
+			m.selected = 0
+			return m, nil
+		}
+	}
+	switch key {
+	case "ctrl+c", "q":
+		m.quitting = true
+		return m, tea.Quit
+	case "j", "down":
+		if m.selected < len(m.filtered)-1 {
+			m.selected++
+		}
+	case "k", "up":
+		if m.selected > 0 {
+			m.selected--
+		}
+	case "g":
+		m.pendingKey = "g"
+	case "G":
+		if len(m.filtered) > 0 {
+			m.selected = len(m.filtered) - 1
+		}
+	case "/":
+		m.mode = "search"
+		m.input.Focus()
+		m.input.Placeholder = "search projects..."
+	case "i":
+		m.mode = "search"
+		m.input.Focus()
+		m.input.Placeholder = "search projects..."
+	case ":":
+		m.mode = "command"
+		m.input.SetValue("")
+		m.input.Focus()
+		m.input.Placeholder = "command (scan, import, favorite, set, ws, config, doctor, refresh, help)"
+	case "enter", "o":
+		if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+			p := m.filtered[m.selected]
+			m.opened = true
+			m.openPath = p.Path
+			m.openNew = false
+			_ = m.repo.TouchLastOpened(p.ID)
+			return m, tea.Quit
+		}
+	case "O":
+		if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+			p := m.filtered[m.selected]
+			m.opened = true
+			m.openPath = p.Path
+			m.openNew = true
+			_ = m.repo.TouchLastOpened(p.ID)
+			return m, tea.Quit
+		}
+	case "d":
+		if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+			p := m.filtered[m.selected]
+			_ = m.repo.Remove(p.ID)
+			return m, func() tea.Msg {
+				projects, _ := m.repo.List("", "", false)
+				return projectsMsg{projects}
+			}
+		}
+	case "f":
+		if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+			pp := m.filtered[m.selected]
+			pp.Favorite = !pp.Favorite
+			_ = m.repo.Update(&pp)
+			return m, func() tea.Msg {
+				projects, _ := m.repo.List("", "", false)
+				return projectsMsg{projects}
+			}
+		}
+	case "r":
+		return m, func() tea.Msg {
+			projects, _ := m.repo.List("", "", false)
+			return projectsMsg{projects}
+		}
+	case "?":
+		m.lastOutput = "Normal mode keys:\n  j/k or arrows: navigate\n  gg/G: top/bottom\n  / or i: search mode\n  :: command mode\n  Enter/o: open   O: open new window\n  d: delete project   f: toggle favorite\n  r: refresh list   ?: this help\n  q: quit"
+	}
+	return m, nil
 }
 
 func (m *Model) applyFilter() {
