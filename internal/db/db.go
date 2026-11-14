@@ -26,14 +26,13 @@ func Open() (*DB, error) {
 		return nil, fmt.Errorf("create data dir: %w", err)
 	}
 	path := filepath.Join(dir, "projects.db")
-	sqlDB, err := sql.Open("sqlite", path)
+	// Set pragmas via DSN so they apply to every pooled connection before any
+	// query runs; busy_timeout must be in effect from the start, otherwise
+	// concurrent processes (launcher + open) fail with SQLITE_BUSY.
+	dsn := path + "?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)"
+	sqlDB, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
-	}
-	// Enable WAL for better concurrency and foreign keys.
-	if _, err := sqlDB.Exec("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;"); err != nil {
-		_ = sqlDB.Close()
-		return nil, fmt.Errorf("pragma: %w", err)
 	}
 	db := &DB{DB: sqlDB, path: path}
 	if err := db.migrate(); err != nil {
