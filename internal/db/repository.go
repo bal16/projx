@@ -2,11 +2,11 @@ package db
 
 import (
 	"database/sql"
-
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/bal16/projx/internal/model"
 )
