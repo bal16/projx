@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bal16/projx/docs/schemas/project-export.schema.json",
+  "title": "projx project export",
+  "description": "Schema for `pjx export` output and `pjx import-file` input: a JSON array of tracked projects.",
+  "type": "array",
+  "items": {
+    "$ref": "#/$defs/project"
+  },
+  "$defs": {
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique project identifier (UUID)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name / alias of the project."
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Absolute filesystem path to the project root. Required for import."
+        },
+        "editor": {
+          "type": "string",
+          "description": "Explicit editor override for this project (e.g. zed, code, nvim). Omit or empty to follow default_editor."
+        },
+        "profile": {
+          "type": "string",
+          "description": "Editor profile name (e.g. VS Code profile)."
+        },
+        "tags": {
+          "type": "array",
+          "description": "Project tags.",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": false
+        },
+        "group": {
+          "type": "string",
+          "description": "Project group name."
+        },
+        "favorite": {
+          "type": "boolean",
+          "description": "Whether the project is marked as a favorite."
+        },
+        "last_opened": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the last time the project was opened (RFC 3339)."
+        },
+        "git_branch": {
+          "type": "string",
+          "description": "Cached current git branch name."
+        },
+        "git_dirty": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cached count of dirty (changed) git files."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Project creation timestamp (RFC 3339)."
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Project last-updated timestamp (RFC 3339)."
+        },
+        "remote": {
+          "type": "string",
+          "description": "Remote SSH host, if the project is on a remote machine."
+        }
+      },
+      "required": [
+        "path"
+      ]
+    }
+  }
+}
