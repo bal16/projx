@@ -72,10 +72,40 @@ pjx config set scan_roots '["~/projects","~/workspace"]'
 
 ## Plugins
 
-- `plugins/noctalia/` - Noctalia v5 launcher provider (trigger `pm`)
-- `plugins/dms/` - DMS (DankMaterialShell) launcher plugin (trigger `pm`)
+- `plugins/noctalia/` - Noctalia v5 launcher provider (trigger `pjx`)
+- `plugins/dms/` - DMS (DankMaterialShell) launcher plugin (trigger `pjx`)
 
 Both call `pjx list --format=delimited` and `pjx open`.
+
+### Installing the Noctalia plugin
+
+```sh
+noctalia msg plugins source add dev path /path/to/projx/plugins/noctalia
+noctalia msg plugins enable projx/project-manager
+```
+
+Then open the Noctalia launcher and type `/pjx`.
+
+### Installing the DMS plugin
+
+Copy the plugin directory into DMS plugins folder:
+
+```sh
+cp -r /path/to/projx/plugins/dms ~/.config/dms/plugins/projxLauncher
+dms restart
+```
+
+Then open the DMS launcher and type `pjx`.
+
+### Shell completion
+
+pjx ships cobra-generated completion scripts:
+
+```sh
+pjx completion bash > /etc/bash_completion.d/pjx
+pjx completion zsh > ~/.zfunc/_pjx
+pjx completion fish > ~/.config/fish/completions/pjx.fish
+```
 
 ## Development
 
