@@ -2,7 +2,7 @@ package db
 
 import "fmt"
 
-const schemaVersion = 1
+const schemaVersion = 2
 
 const createSchema = `
 CREATE TABLE IF NOT EXISTS projects (
@@ -43,17 +43,23 @@ func (d *DB) migrate() error {
 	if _, err := d.Exec(createSchema); err != nil {
 		return fmt.Errorf("create schema: %w", err)
 	}
-	// Migrate older databases: add profile column if missing.
-	_, _ = d.Exec("ALTER TABLE projects ADD COLUMN profile TEXT NOT NULL DEFAULT ''")
-	// Record version if absent.
 	var v int
 	err := d.QueryRow("SELECT COALESCE((SELECT version FROM schema_version LIMIT 1), 0)").Scan(&v)
 	if err != nil {
 		return fmt.Errorf("read schema version: %w", err)
 	}
+	// Run incremental migrations for older databases.
+	if v < 2 {
+		// Add profile column if missing (idempotent; ignore "duplicate column" errors).
+		_, _ = d.Exec("ALTER TABLE projects ADD COLUMN profile TEXT NOT NULL DEFAULT ''")
+	}
 	if v == 0 {
 		if _, err := d.Exec("INSERT INTO schema_version (version) VALUES (?)", schemaVersion); err != nil {
 			return fmt.Errorf("set schema version: %w", err)
+		}
+	} else if v < schemaVersion {
+		if _, err := d.Exec("UPDATE schema_version SET version = ?", schemaVersion); err != nil {
+			return fmt.Errorf("update schema version: %w", err)
 		}
 	}
 	return nil

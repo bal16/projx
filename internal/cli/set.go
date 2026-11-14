@@ -29,7 +29,11 @@ func newSetCmd() *cobra.Command {
 				p.Editor = editor
 			}
 			if cmd.Flags().Changed("profile") {
-				p.Profile = profile
+				if profile == "" || profile == "-" || profile == "none" {
+					p.Profile = ""
+				} else {
+					p.Profile = profile
+				}
 			}
 			if cmd.Flags().Changed("group") {
 				if group == "-" || group == "none" {

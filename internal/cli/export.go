@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bal16/projx/internal/model"
+	"github.com/bal16/projx/internal/util"
 )
 
 func newExportCmd() *cobra.Command {
@@ -69,7 +70,7 @@ func newImportFileCmd() *cobra.Command {
 					p.ID = "" // let Add generate
 				}
 				if p.Name == "" {
-					p.Name = baseName(p.Path)
+					p.Name = util.BaseName(p.Path)
 				}
 				if p.Tags == nil {
 					p.Tags = []string{}
@@ -83,32 +84,4 @@ func newImportFileCmd() *cobra.Command {
 			return nil
 		},
 	}
-}
-
-func baseName(p string) string {
-	parts := splitPath(p)
-	if len(parts) == 0 {
-		return p
-	}
-	return parts[len(parts)-1]
-}
-
-func splitPath(p string) []string {
-	// simple split
-	var out []string
-	cur := ""
-	for _, c := range p {
-		if c == '/' {
-			if cur != "" {
-				out = append(out, cur)
-			}
-			cur = ""
-		} else {
-			cur += string(c)
-		}
-	}
-	if cur != "" {
-		out = append(out, cur)
-	}
-	return out
 }

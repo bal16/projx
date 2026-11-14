@@ -55,7 +55,7 @@ staticcheck:
 	@if command -v $(STATICCHECK) >/dev/null 2>&1; then $(STATICCHECK) ./...; else echo "staticcheck not found; skipping"; fi
 
 # --- All quality gates ---
-quality: fmt-check lint vet
+quality: fmt-check lint vet test
 	@echo "All quality checks passed."
 
 # --- Tooling install ---

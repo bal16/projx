@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -25,16 +26,19 @@ func newWsCmd() *cobra.Command {
 			for _, p := range args[1:] {
 				if strings.HasPrefix(p, "~/") {
 					home, _ := os.UserHomeDir()
-					p = home + "/" + p[2:]
-				}
-				abs, err := os.Getwd()
-				_ = abs
-				if err == nil {
-					// make absolute if relative
-					if !strings.HasPrefix(p, "/") {
-						cwd, _ := os.Getwd()
-						p = cwd + "/" + p
+					p = filepath.Join(home, p[2:])
+				} else if !filepath.IsAbs(p) {
+					cwd, err := os.Getwd()
+					if err != nil {
+						return err
 					}
+					p = filepath.Join(cwd, p)
+				}
+				// Validate path exists (allow missing with a warning).
+				if info, err := os.Stat(p); err != nil {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: path does not exist: %s\n", p)
+				} else if !info.IsDir() {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: not a directory: %s\n", p)
 				}
 				paths = append(paths, p)
 			}

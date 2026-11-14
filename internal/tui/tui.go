@@ -13,6 +13,7 @@ import (
 
 	"github.com/bal16/projx/internal/db"
 	"github.com/bal16/projx/internal/model"
+	"github.com/bal16/projx/internal/util"
 )
 
 // Model is the Bubble Tea model for the project picker.
@@ -352,7 +353,7 @@ func (m Model) View() string {
 	for i, p := range m.filtered {
 		name := p.Name
 		if name == "" {
-			name = baseName(p.Path)
+			name = util.BaseName(p.Path)
 		}
 		git := ""
 		if p.GitBranch != "" {
@@ -447,13 +448,6 @@ func (m Model) Opened() bool     { return m.opened }
 func (m Model) OpenPath() string { return m.openPath }
 func (m Model) OpenNew() bool    { return m.openNew }
 
-func baseName(p string) string {
-	parts := strings.Split(strings.TrimRight(p, "/"), "/")
-	if len(parts) == 0 {
-		return p
-	}
-	return parts[len(parts)-1]
-}
 
 func shortPath(p, home string) string {
 	if home != "" && strings.HasPrefix(p, home) {
