@@ -3,7 +3,7 @@
 ## Requirements
 
 **Core (Go):**
-- Go 1.27+
+- Go 1.26+
 - `gofmt` (bundled with Go)
 - `golangci-lint` v2.x
 - `goimports` (optional, falls back to gofmt)
@@ -24,7 +24,7 @@ make install-tools
 ## Notes
 
 - The scanner does not follow symlinks by default (avoids cycles).
-- Go 1.27+ is required (uses modernc.org/sqlite pure-Go driver).
+- Go 1.26+ is required (uses modernc.org/sqlite pure-Go driver).
 
 ## Quality gates
 
