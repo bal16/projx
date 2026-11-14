@@ -95,7 +95,7 @@ func newProfilesCmd() *cobra.Command {
 				return nil
 			}
 			for _, p := range profiles {
-				fmt.Printf("%-24s %s\n", p.Name, p.ID)
+				fmt.Println(p.Name)
 			}
 			return nil
 		},

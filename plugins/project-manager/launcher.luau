@@ -373,10 +373,12 @@ function onActivate(id)
             noctalia.runAsync("pjx profiles 2>&1", function(result)
                 local out = trim(result.stdout or "")
                 if out == "" then
-                    out = trim(result.stderr or "") or ""
+                    out = trim(result.stderr or "")
                 end
                 if out == "" then
                     out = "no profiles found"
+                else
+                    out = out:gsub("\n", ", ")
                 end
                 noctalia.notify("VS Code profiles", out:sub(1, 200))
             end)
