@@ -48,7 +48,9 @@ func Load(repo *db.Repository) (*Config, error) {
 	}
 	path := filepath.Join(dir, "config.json")
 	if data, err := os.ReadFile(path); err == nil {
-		_ = json.Unmarshal(data, cfg)
+		if err := json.Unmarshal(data, cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: invalid config.json: %v (using defaults)\n", err)
+		}
 	}
 
 	// Override with DB settings if present.

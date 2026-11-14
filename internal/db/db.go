@@ -31,7 +31,7 @@ func Open() (*DB, error) {
 		return nil, fmt.Errorf("open sqlite: %w", err)
 	}
 	// Enable WAL for better concurrency and foreign keys.
-	if _, err := sqlDB.Exec("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;"); err != nil {
+	if _, err := sqlDB.Exec("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;"); err != nil {
 		_ = sqlDB.Close()
 		return nil, fmt.Errorf("pragma: %w", err)
 	}

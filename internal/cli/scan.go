@@ -64,7 +64,7 @@ func newScanCmd() *cobra.Command {
 				fmt.Printf("added %s\n", p.Name)
 			}
 			fmt.Printf("scanned %d found, %d added\n", len(found), added)
-			// persist roots if new
+			// persist roots (if provided) and max-depth
 			if len(args) > 0 {
 				merged := append([]string{}, a.Config.ScanRoots...)
 				for _, r := range args {
@@ -73,9 +73,11 @@ func newScanCmd() *cobra.Command {
 					}
 				}
 				a.Config.ScanRoots = merged
-				a.Config.ScanMaxDepth = maxDepth
-				_ = config.Save(a.Config, a.Repo)
 			}
+			if maxDepth > 0 {
+				a.Config.ScanMaxDepth = maxDepth
+			}
+			_ = config.Save(a.Config, a.Repo)
 			return nil
 		},
 	}

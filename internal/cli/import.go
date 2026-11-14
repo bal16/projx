@@ -11,7 +11,7 @@ func newImportCmd() *cobra.Command {
 	var all bool
 
 	cmd := &cobra.Command{
-		Use:   "import [zed|code|codium|cursor|windsurf]",
+		Use:   "import [zed|code|codium|cursor|windsurf|projectmanager|pm]",
 		Short: "Import projects from an existing editor (one-time)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			a := requireApp()

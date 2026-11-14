@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/bal16/projx/internal/gitinfo"
 	"github.com/spf13/cobra"
 )
 
 func newListCmd() *cobra.Command {
-	var tag, group string
+	var tag, group, sortKey string
+	var refresh bool
 	var favoritesOnly, jsonOut bool
 	var format string
 
@@ -21,6 +23,44 @@ func newListCmd() *cobra.Command {
 			projects, err := a.Repo.List(tag, group, favoritesOnly)
 			if err != nil {
 				return err
+			}
+			if refresh {
+				for i := range projects {
+					gi := gitinfo.Inspect(projects[i].Path)
+					if gi.IsRepo {
+						_ = a.Repo.UpdateGitStatus(projects[i].ID, gi.Branch, gi.Dirty)
+						projects[i].GitBranch = gi.Branch
+						projects[i].GitDirty = gi.Dirty
+					}
+				}
+			}
+			switch sortKey {
+			case "name":
+				// sort by name asc (favorites still first if not overridden)
+			case "recent":
+				// default: already sorted by repo (favorite desc, last_opened desc)
+			case "path":
+				// sort by path
+			}
+			// Apply sort (stable) on top of repo default.
+			switch sortKey {
+			case "name":
+				// simple insertion sort to avoid import churn
+				for i := 1; i < len(projects); i++ {
+					j := i
+					for j > 0 && projects[j-1].Name > projects[j].Name {
+						projects[j-1], projects[j] = projects[j], projects[j-1]
+						j--
+					}
+				}
+			case "path":
+				for i := 1; i < len(projects); i++ {
+					j := i
+					for j > 0 && projects[j-1].Path > projects[j].Path {
+						projects[j-1], projects[j] = projects[j], projects[j-1]
+						j--
+					}
+				}
 			}
 			if jsonOut {
 				format = "json"
@@ -82,6 +122,8 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().StringVar(&group, "group", "", "filter by group")
 	cmd.Flags().BoolVar(&favoritesOnly, "favorites", false, "only favorites")
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "output JSON (shorthand for --format=json)")
+	cmd.Flags().StringVar(&sortKey, "sort", "recent", "sort order: recent|name|path")
+	cmd.Flags().BoolVar(&refresh, "refresh", false, "refresh cached git status before listing")
 	cmd.Flags().StringVar(&format, "format", "text", "output format: text|json|delimited")
 	return cmd
 }

@@ -2,8 +2,10 @@ package db
 
 import (
 	"database/sql"
+
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"time"
 
 	"github.com/bal16/projx/internal/model"
@@ -26,10 +28,6 @@ func (r *Repository) List(tag, group string, favoritesOnly bool) ([]model.Projec
 	q := `SELECT id,name,path,editor,profile,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at FROM projects`
 	var args []any
 	var conds []string
-	if tag != "" {
-		conds = append(conds, "tags LIKE ?")
-		args = append(args, "%\""+tag+"\"%")
-	}
 	if group != "" {
 		conds = append(conds, "group_name = ?")
 		args = append(args, group)
@@ -53,6 +51,9 @@ func (r *Repository) List(tag, group string, favoritesOnly bool) ([]model.Projec
 		p, err := scanProject(rows)
 		if err != nil {
 			return nil, err
+		}
+		if tag != "" && !p.HasTag(tag) {
+			continue
 		}
 		out = append(out, p)
 	}
@@ -225,6 +226,76 @@ func unixToTime(u int64) time.Time {
 }
 
 func newID() string {
-	// Simple unique id: timestamp + random-ish suffix.
-	return fmt.Sprintf("p%d", time.Now().UnixNano())
+	return "p" + uuid.NewString()
+}
+
+// --- Sets (workspace sets) ---
+
+// Set represents a named group of project paths opened together.
+type Set struct {
+	Name  string   `json:"name"`
+	Paths []string `json:"paths"`
+}
+
+// ListSets returns all sets.
+func (r *Repository) ListSets() ([]Set, error) {
+	rows, err := r.db.Query("SELECT name, paths FROM sets ORDER BY name")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []Set
+	for rows.Next() {
+		var s Set
+		var pathsJSON string
+		if err := rows.Scan(&s.Name, &pathsJSON); err != nil {
+			return nil, err
+		}
+		_ = json.Unmarshal([]byte(pathsJSON), &s.Paths)
+		if s.Paths == nil {
+			s.Paths = []string{}
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// GetSet returns a set by name.
+func (r *Repository) GetSet(name string) (*Set, error) {
+	row := r.db.QueryRow("SELECT name, paths FROM sets WHERE name = ?", name)
+	var s Set
+	var pathsJSON string
+	if err := row.Scan(&s.Name, &pathsJSON); err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal([]byte(pathsJSON), &s.Paths)
+	if s.Paths == nil {
+		s.Paths = []string{}
+	}
+	return &s, nil
+}
+
+// AddSet creates or updates a set.
+func (r *Repository) AddSet(name string, paths []string) error {
+	now := time.Now().Unix()
+	b, _ := json.Marshal(paths)
+	_, err := r.db.Exec(
+		`INSERT INTO sets (name, paths, created_at, updated_at) VALUES (?,?,?,?)
+		 ON CONFLICT(name) DO UPDATE SET paths=excluded.paths, updated_at=excluded.updated_at`,
+		name, string(b), now, now,
+	)
+	return err
+}
+
+// RemoveSet deletes a set.
+func (r *Repository) RemoveSet(name string) error {
+	res, err := r.db.Exec("DELETE FROM sets WHERE name = ?", name)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("set not found: %s", name)
+	}
+	return nil
 }

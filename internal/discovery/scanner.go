@@ -4,6 +4,7 @@ package discovery
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 )
@@ -81,6 +82,9 @@ func (s *Scanner) hasMarker(dir string) bool {
 }
 
 func expandHome(p string) (string, error) {
+	if p == "~" {
+		return os.UserHomeDir()
+	}
 	if strings.HasPrefix(p, "~/") {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -88,8 +92,17 @@ func expandHome(p string) (string, error) {
 		}
 		return filepath.Join(home, p[2:]), nil
 	}
-	if p == "~" {
-		return os.UserHomeDir()
+	if strings.HasPrefix(p, "~") && len(p) > 1 {
+		// ~user/ form
+		parts := strings.SplitN(p[1:], "/", 2)
+		u, err := user.Lookup(parts[0])
+		if err != nil {
+			return "", err
+		}
+		if len(parts) == 1 {
+			return u.HomeDir, nil
+		}
+		return filepath.Join(u.HomeDir, parts[1]), nil
 	}
 	return p, nil
 }

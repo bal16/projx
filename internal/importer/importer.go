@@ -21,11 +21,23 @@ func All() []Importer {
 		&VSCodeImporter{Variant: "code"},
 		&VSCodeImporter{Variant: "codium"},
 		&VSCodeImporter{Variant: "cursor"},
+		&ProjectManagerImporter{Variant: "code"},
+		&ProjectManagerImporter{Variant: "codium"},
+		&ProjectManagerImporter{Variant: "cursor"},
 	}
 }
 
 // ByName returns an importer by name.
 func ByName(name string) (Importer, error) {
+	// Aliases for convenience.
+	switch name {
+	case "projectmanager", "pm", "pm-ext":
+		name = "projectmanager-code"
+	case "projectmanager-codium":
+		name = "projectmanager-codium"
+	case "projectmanager-cursor":
+		name = "projectmanager-cursor"
+	}
 	for _, imp := range All() {
 		if imp.Name() == name {
 			return imp, nil

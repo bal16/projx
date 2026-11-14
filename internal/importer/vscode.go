@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -121,10 +122,12 @@ func uriToPath(u string) string {
 	p := strings.TrimPrefix(u, "file://")
 	// handle file:///path
 	p = strings.TrimPrefix(p, "/")
-	// On linux, path should start with /
 	if !strings.HasPrefix(p, "/") {
 		p = "/" + p
 	}
-	// unescape %20 etc. (minimal)
+	// unescape percent-encoded characters (%20, %23, ...)
+	if unescaped, err := url.PathUnescape(p); err == nil {
+		p = unescaped
+	}
 	return p
 }
