@@ -1,5 +1,10 @@
 # projx
 
+![Go](https://shieldcn.dev/badge/Go-1.26-00ADD8.svg)
+![SQLite](https://shieldcn.dev/badge/SQLite-WAL-003B57.svg)
+![TUI](https://shieldcn.dev/badge/TUI-Bubble_Tea-FF75B5.svg)
+![CLI](https://shieldcn.dev/badge/CLI-Cobra-000000.svg)
+
 **projx** is a universal project manager for developers. It keeps all your
 codebases (repos and workspaces) in one place — with aliases, tags, groups,
 favorites, and cached git status — and opens any of them in your editor of
