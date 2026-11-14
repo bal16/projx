@@ -95,7 +95,7 @@ local function makeProjectRows(projects, filter)
     for _, p in ipairs(projects) do
         -- tag filter check
         if tagFilter and not hasTag(p, tagFilter) then
-            goto continue
+            continue
         end
         local name = projectName(p)
         local score = 0
@@ -146,7 +146,6 @@ local function makeProjectRows(projects, filter)
                 score = (textFilter == "") and nil or score,
             })
         end
-        ::continue::
     end
     return rows
 end
