@@ -4,6 +4,8 @@
 -- Supports: opening projects, adding new projects from a path, tag filter
 -- (#tag), and quick configuration actions (scan, import, set default editor).
 
+local SCRIPT_VERSION = "v7-util-prefix-fix"
+noctalia.log("pjx launcher loaded: " .. SCRIPT_VERSION)
 local cachedProjects = nil
 local loadError = nil
 local FIELD_SEP = "\31"
