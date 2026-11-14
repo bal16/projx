@@ -114,3 +114,30 @@ func TestConfigDir(t *testing.T) {
 		t.Fatalf("got %s", got)
 	}
 }
+
+func TestPROJX_HOMEIsolation(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("PROJX_HOME", dir)
+	d, err := Open()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = d.Close() }()
+	if d.Path() != filepath.Join(dir, "data", "projects.db") {
+		t.Fatalf("db path: %s", d.Path())
+	}
+	cfgDir, err := ConfigDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfgDir != filepath.Join(dir, "config") {
+		t.Fatalf("config dir: %s", cfgDir)
+	}
+	cacheDir, err := CacheDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cacheDir != filepath.Join(dir, "cache") {
+		t.Fatalf("cache dir: %s", cacheDir)
+	}
+}

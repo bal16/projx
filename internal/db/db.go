@@ -47,25 +47,58 @@ func Open() (*DB, error) {
 func (d *DB) Path() string { return d.path }
 
 // dataDir returns the projx data directory.
+// Resolution order: PROJX_DATA_DIR > PROJX_HOME/data > XDG_DATA_HOME/projx > ~/.local/share/projx
 func dataDir() (string, error) {
+	if d := os.Getenv("PROJX_DATA_DIR"); d != "" {
+		return d, nil
+	}
+	if home := os.Getenv("PROJX_HOME"); home != "" {
+		return filepath.Join(home, "data"), nil
+	}
 	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
 		return filepath.Join(xdg, "projx"), nil
 	}
-	home, err := os.UserHomeDir()
+	h, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".local", "share", "projx"), nil
+	return filepath.Join(h, ".local", "share", "projx"), nil
 }
 
 // ConfigDir returns the projx config directory.
+// Resolution order: PROJX_CONFIG_DIR > PROJX_HOME/config > XDG_CONFIG_HOME/projx > ~/.config/projx
 func ConfigDir() (string, error) {
+	if d := os.Getenv("PROJX_CONFIG_DIR"); d != "" {
+		return d, nil
+	}
+	if home := os.Getenv("PROJX_HOME"); home != "" {
+		return filepath.Join(home, "config"), nil
+	}
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
 		return filepath.Join(xdg, "projx"), nil
 	}
-	home, err := os.UserHomeDir()
+	h, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".config", "projx"), nil
+	return filepath.Join(h, ".config", "projx"), nil
+}
+
+// CacheDir returns the projx cache directory (for future remote metadata cache).
+// Resolution order: PROJX_CACHE_DIR > PROJX_HOME/cache > XDG_CACHE_HOME/projx > ~/.cache/projx
+func CacheDir() (string, error) {
+	if d := os.Getenv("PROJX_CACHE_DIR"); d != "" {
+		return d, nil
+	}
+	if home := os.Getenv("PROJX_HOME"); home != "" {
+		return filepath.Join(home, "cache"), nil
+	}
+	if xdg := os.Getenv("XDG_CACHE_HOME"); xdg != "" {
+		return filepath.Join(xdg, "projx"), nil
+	}
+	h, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(h, ".cache", "projx"), nil
 }
