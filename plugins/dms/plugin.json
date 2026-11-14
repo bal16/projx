@@ -7,8 +7,15 @@
   "icon": "folder",
   "type": "launcher",
   "component": "./ProjxLauncher.qml",
+  "settings": "./ProjxLauncherSettings.qml",
   "trigger": "pjx",
+  "capabilities": [
+    "launcher",
+    "settings_read",
+    "settings_write"
+  ],
   "permissions": [
-    "settings_read"
+    "settings_read",
+    "settings_write"
   ]
 }

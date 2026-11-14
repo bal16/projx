@@ -1,20 +1,50 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.Common
+import qs.Widgets
+import qs.Services
+import qs.Modules.Plugins
 
 QtObject {
     id: root
 
     property var pluginService: null
+
+    // Plugin identity
+    property string pluginId: "projxLauncher"
+
+    // Settings (persisted via pluginService)
     property string trigger: "pjx"
+    property int maxResults: 50
+    property bool showProjects: true
+
+    // Cached data
+    property var cachedProjects: []
+    property string rawData: ""
+
+    // Home directory
+    property string homeDir: Quickshell.env("HOME") || "/home"
 
     signal itemsChanged
 
-    property var cachedProjects: []
-    property string rawData: ""
-    property int maxResults: 50
+    // Load persisted settings on init
+    Component.onCompleted: {
+        if (pluginService) {
+            var t = pluginService.loadPluginData(pluginId, "trigger");
+            if (t) root.trigger = t;
+            var m = pluginService.loadPluginData(pluginId, "maxResults");
+            if (m) root.maxResults = parseInt(m);
+            var s = pluginService.loadPluginData(pluginId, "showProjects");
+            if (s !== null && s !== undefined) root.showProjects = (s === true || s === "true");
+        }
+        root.refreshCache();
+    }
 
-    property string homeDir: Quickshell.env("HOME") || "/home"
+    onTriggerChanged: {
+        if (pluginService) pluginService.savePluginData(pluginId, "trigger", trigger);
+        itemsChanged();
+    }
 
     // Load projects via pjx CLI
     property var loadProcess: Process {
@@ -28,6 +58,7 @@ QtObject {
                 root.parseData();
             }
             root.rawData = "";
+            itemsChanged();
         }
     }
 
@@ -58,15 +89,6 @@ QtObject {
             });
         }
         root.cachedProjects = projects;
-        root.itemsChanged();
-    }
-
-    // Trigger initial load
-    property var initTimer: Timer {
-        interval: 100
-        repeat: false
-        running: true
-        onTriggered: root.refreshCache()
     }
 
     function shortPath(p) {
@@ -77,50 +99,50 @@ QtObject {
     }
 
     function getItems(query) {
-        var q = (query || "").trim();
-        var ql = q.toLowerCase();
-        var tagFilter = null;
-        var textFilter = q;
-        if (q.indexOf("#") === 0) {
-            tagFilter = q.substring(1).toLowerCase();
-            textFilter = "";
-            ql = "";
-        }
-        var results = [];
+        var items = [];
+        var trimmed = query ? query.trim() : "";
+        var lowerQuery = trimmed.toLowerCase();
 
-        // Existing projects
-        for (var i = 0; i < root.cachedProjects.length; i++) {
-            var p = root.cachedProjects[i];
-            var name = p.name || p.path.split("/").pop();
-            // tag filter
-            if (tagFilter) {
-                var tags = (p.tags || "").toLowerCase().split(",");
-                var hasTag = false;
-                for (var ti = 0; ti < tags.length; ti++) {
-                    if (tags[ti].trim() === tagFilter) { hasTag = true; break; }
+        // "New empty window" item always on top
+        items.push({
+            name: "New Empty Window",
+            comment: "Open a new empty editor window",
+            action: "newwindow",
+            icon: "material:add_box",
+            categories: ["projx"],
+            _preScored: 10000
+        });
+
+        if (root.showProjects) {
+            for (var i = 0; i < root.cachedProjects.length; i++) {
+                var p = root.cachedProjects[i];
+                var pname = p.name || "";
+                var ppath = p.path || "";
+
+                if (trimmed === "" || pname.toLowerCase().indexOf(lowerQuery) >= 0 ||
+                    ppath.toLowerCase().indexOf(lowerQuery) >= 0) {
+                    var comment = shortPath(ppath);
+                    if (p.gitBranch) {
+                        comment += "  [" + p.gitBranch;
+                        if (p.gitDirty > 0) comment += " +" + p.gitDirty;
+                        comment += "]";
+                    }
+                    if (p.tags) comment += "  " + p.tags;
+                    items.push({
+                        name: pname,
+                        comment: comment,
+                        action: "project:" + ppath,
+                        icon: p.favorite ? "material:star" : "material:folder",
+                        categories: ["projx"]
+                    });
                 }
-                if (!hasTag) continue;
+                if (items.length >= root.maxResults) break;
             }
-            if (textFilter === "" || name.toLowerCase().indexOf(ql) >= 0 || p.path.toLowerCase().indexOf(ql) >= 0) {
-                var subtitle = shortPath(p.path);
-                if (p.gitBranch) {
-                    subtitle += "  [" + p.gitBranch;
-                    if (p.gitDirty > 0) subtitle += " +" + p.gitDirty;
-                    subtitle += "]";
-                }
-                results.push({
-                    id: p.path,
-                    title: name,
-                    subtitle: subtitle,
-                    icon: p.favorite ? "star" : "folder"
-                });
-            }
-            if (results.length >= root.maxResults) break;
         }
 
-        // If query looks like a directory path not yet a project, offer to add it.
-        if (q !== "" && (q.indexOf("/") >= 0 || q.indexOf("~") === 0 || q.indexOf(".") === 0)) {
-            var expanded = q;
+        // Add project from path
+        if (trimmed !== "" && (trimmed.indexOf("/") >= 0 || trimmed.indexOf("~") === 0 || trimmed.indexOf(".") === 0)) {
+            var expanded = trimmed;
             if (expanded.indexOf("~/") === 0) {
                 expanded = root.homeDir + expanded.substring(1);
             }
@@ -129,79 +151,89 @@ QtObject {
                 if (root.cachedProjects[j].path === expanded) { already = true; break; }
             }
             if (!already) {
-                results.unshift({
-                    id: "add:" + expanded,
-                    title: "Add project: " + expanded.split("/").pop(),
-                    subtitle: "create project from " + shortPath(expanded),
-                    icon: "plus"
+                items.push({
+                    name: "Add project: " + expanded.split("/").pop(),
+                    comment: "create project from " + shortPath(expanded),
+                    action: "add:" + expanded,
+                    icon: "material:add",
+                    categories: ["projx"]
                 });
             }
         }
 
         // Utility entries
-        var showUtil = (q === "") || ql.indexOf("scan") >= 0 || ql.indexOf("import") >= 0 ||
-            ql.indexOf("config") >= 0 || ql.indexOf("settings") >= 0 || ql.indexOf("editor") >= 0 ||
-            ql.indexOf("add") >= 0 || ql.indexOf("help") >= 0;
+        var showUtil = trimmed === "" || lowerQuery.indexOf("scan") >= 0 ||
+            lowerQuery.indexOf("import") >= 0 || lowerQuery.indexOf("config") >= 0 ||
+            lowerQuery.indexOf("settings") >= 0 || lowerQuery.indexOf("editor") >= 0 ||
+            lowerQuery.indexOf("add") >= 0 || lowerQuery.indexOf("help") >= 0 ||
+            lowerQuery.indexOf("refresh") >= 0;
         if (showUtil) {
             var utils = [
-                { id: "util:scan", title: "Scan directories for projects", subtitle: "run pjx scan on configured roots", icon: "folder-search" },
-                { id: "util:import-zed", title: "Import projects from Zed", subtitle: "one-time migration", icon: "download" },
-                { id: "util:import-all", title: "Import from all editors", subtitle: "zed, vscode, cursor, ...", icon: "download" },
-                { id: "util:editor-zed", title: "Set default editor: zed", subtitle: "pjx config set default_editor zed", icon: "code" },
-                { id: "util:editor-code", title: "Set default editor: vscode", subtitle: "pjx config set default_editor code", icon: "code" },
-                { id: "util:editor-nvim", title: "Set default editor: nvim", subtitle: "pjx config set default_editor nvim", icon: "code" }
+                { name: "Scan directories for projects", comment: "run pjx scan on configured roots", action: "util:scan", icon: "material:search", categories: ["projx"] },
+                { name: "Import projects from Zed", comment: "one-time migration", action: "util:import-zed", icon: "material:download", categories: ["projx"] },
+                { name: "Import from all editors", comment: "zed, vscode, cursor, ...", action: "util:import-all", icon: "material:download", categories: ["projx"] },
+                { name: "Set default editor: zed", comment: "pjx config set default_editor zed", action: "util:editor-zed", icon: "material:code", categories: ["projx"] },
+                { name: "Set default editor: vscode", comment: "pjx config set default_editor code", action: "util:editor-code", icon: "material:code", categories: ["projx"] },
+                { name: "Set default editor: nvim", comment: "pjx config set default_editor nvim", action: "util:editor-nvim", icon: "material:code", categories: ["projx"] },
+                { name: "Refresh project list", comment: "clear cache and reload", action: "util:refresh", icon: "material:refresh", categories: ["projx"] }
             ];
             for (var u = 0; u < utils.length; u++) {
                 var ut = utils[u];
-                if (q === "" || ut.title.toLowerCase().indexOf(ql) >= 0 || ut.subtitle.toLowerCase().indexOf(ql) >= 0) {
-                    results.push(ut);
+                if (trimmed === "" || ut.name.toLowerCase().indexOf(lowerQuery) >= 0 ||
+                    ut.comment.toLowerCase().indexOf(lowerQuery) >= 0) {
+                    items.push(ut);
                 }
             }
         }
 
-        if (results.length === 0) {
-            results.push({ id: "", title: "No projects found", subtitle: "run `pjx scan` to discover projects", icon: "folder-x" });
+        if (items.length === 0) {
+            items.push({ name: "No projects found", comment: "run `pjx scan` to discover projects", action: "", icon: "material:folder_off", categories: ["projx"] });
         }
-        return results;
-    }
-
-    function runCmd(args) {
-        Quickshell.execDetached(args);
-    }
-
-    function openProject(path, newWindow) {
-        var args = newWindow ? ["pjx", "open", path, "--new-window"] : ["pjx", "open", path];
-        Quickshell.execDetached(args);
+        return items;
     }
 
     function executeItem(item) {
-        if (!item || !item.id) return;
-        var id = item.id;
-        if (id === "") return;
-        if (id.indexOf("add:") === 0) {
-            var path = id.substring(4);
-            Quickshell.execDetached(["pjx", "add", path]);
+        if (!item || !item.action) return;
+        var action = item.action;
+        var colonIndex = action.indexOf(":");
+        var actionType = colonIndex > 0 ? action.substring(0, colonIndex) : action;
+        var actionData = colonIndex > 0 ? action.substring(colonIndex + 1) : "";
+        var exe = "pjx";
+
+        if (actionType === "newwindow") {
+            Quickshell.execDetached([exe, "-n"]);
+            if (ToastService) ToastService.showInfo("Opening new editor window");
+        } else if (actionType === "project") {
+            Quickshell.execDetached([exe, "open", actionData]);
+            if (ToastService) ToastService.showInfo("Opening " + actionData.split("/").pop());
+        } else if (actionType === "add") {
+            Quickshell.execDetached([exe, "add", actionData]);
+            if (ToastService) ToastService.showInfo("Adding project: " + actionData);
             root.refreshCache();
-            return;
-        }
-        if (id.indexOf("util:") === 0) {
-            var action = id.substring(6);
-            if (action === "scan") {
-                Quickshell.execDetached(["pjx", "scan"]);
+        } else if (actionType === "util") {
+            if (actionData === "scan") {
+                Quickshell.execDetached([exe, "scan"]);
+                if (ToastService) ToastService.showInfo("Scanning directories");
                 root.refreshCache();
-            } else if (action === "import-zed") {
-                Quickshell.execDetached(["pjx", "import", "zed"]);
+            } else if (actionData === "import-zed") {
+                Quickshell.execDetached([exe, "import", "zed"]);
+                if (ToastService) ToastService.showInfo("Importing from Zed");
                 root.refreshCache();
-            } else if (action === "import-all") {
-                Quickshell.execDetached(["pjx", "import", "--all"]);
+            } else if (actionData === "import-all") {
+                Quickshell.execDetached([exe, "import", "--all"]);
+                if (ToastService) ToastService.showInfo("Importing from all editors");
                 root.refreshCache();
-            } else if (action.indexOf("editor-") === 0) {
-                var ed = action.substring(7);
-                Quickshell.execDetached(["pjx", "config", "set", "default_editor", ed]);
+            } else if (actionData.indexOf("editor-") === 0) {
+                var ed = actionData.substring(7);
+                Quickshell.execDetached([exe, "config", "set", "default_editor", ed]);
+                if (ToastService) ToastService.showInfo("Default editor set to " + ed);
+            } else if (actionData === "refresh") {
+                root.refreshCache();
+                if (ToastService) ToastService.showInfo("Refreshed");
             }
-            return;
         }
-        // normal project: open
-        openProject(id, false);
     }
+
+    // Allow DMS to call refresh
+    function refresh() { root.refreshCache(); }
 }
