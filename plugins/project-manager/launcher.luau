@@ -5,6 +5,7 @@
 -- (#tag), and quick configuration actions (scan, import, set default editor).
 
 local cachedProjects = nil
+local loadError = nil
 local FIELD_SEP = "\31"
 
 local function trim(s)
@@ -31,7 +32,7 @@ local function splitFields(line)
 end
 
 local function loadProjects(onDone)
-    local cmd = "pjx list --format=delimited 2>/dev/null"
+    local cmd = "pjx list --format=delimited 2>&1"
     noctalia.runAsync(cmd, function(result)
         local projects = {}
         if result.exitCode == 0 and type(result.stdout) == "string" then
@@ -55,6 +56,8 @@ local function loadProjects(onDone)
             end
         end
         cachedProjects = projects
+        loadError = (result.exitCode ~= 0) and trim(result.stderr or result.stdout or "") or nil
+        noctalia.log(string.format("pjx: list exit=%d projects=%d", result.exitCode, #projects))
         onDone(projects)
     end)
 end
@@ -256,6 +259,19 @@ local function showResults(query, projects, filter)
         end
     end
 
+    -- pjx failed: surface the error instead of an empty list.
+    if loadError ~= nil and loadError ~= "" then
+        launcher.setResults(query, {
+            {
+                id = "",
+                title = "pjx error",
+                subtitle = loadError:sub(1, 120),
+                glyph = "alert-triangle",
+            },
+        })
+        return
+    end
+
     if #rows == 0 then
         launcher.setResults(query, {
             {
@@ -272,6 +288,7 @@ end
 
 function onQuery(query)
     local filter = trim(query)
+    noctalia.log("pjx: onQuery '" .. filter .. "'")
 
     if filter == "" then
         cachedProjects = nil
@@ -297,6 +314,7 @@ function onQuery(query)
 end
 
 function onActivate(id)
+    noctalia.log("pjx: onActivate '" .. id .. "'")
     if id == "" then
         return
     end
@@ -350,7 +368,14 @@ function onActivate(id)
             noctalia.notify("projx", "Refreshed")
         elseif action == "profiles" then
             noctalia.runAsync("pjx profiles 2>&1", function(result)
-                noctalia.notify("projx", (result.stdout or "no profiles"):sub(1, 200))
+                local out = trim(result.stdout or "")
+                if out == "" then
+                    out = trim(result.stderr or "") or ""
+                end
+                if out == "" then
+                    out = "no profiles found"
+                end
+                noctalia.notify("VS Code profiles", out:sub(1, 200))
             end)
         elseif action:sub(1, 7) == "editor-" then
             local ed = action:sub(8)
@@ -362,11 +387,17 @@ function onActivate(id)
     end
     -- normal project open
     local newWindow = noctalia.getConfig("new_window") == true
-    local cmd
+    local args = "pjx open " .. shellQuote(id)
     if newWindow then
-        cmd = string.format("nohup pjx open %s --new-window >/dev/null 2>&1 &", shellQuote(id))
-    else
-        cmd = string.format("nohup pjx open %s >/dev/null 2>&1 &", shellQuote(id))
+        args = args .. " --new-window"
     end
-    noctalia.runAsync(cmd)
+    noctalia.runAsync(args .. " 2>&1", function(result)
+        noctalia.log(string.format("pjx: open exit=%d", result.exitCode))
+        if result.exitCode ~= 0 then
+            noctalia.notifyError(
+                "Failed to open project",
+                trim(result.stderr or result.stdout or "unknown error"):sub(1, 160)
+            )
+        end
+    end)
 end
