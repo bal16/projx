@@ -396,11 +396,15 @@ func (m Model) View() string {
 			}
 			git += "]"
 		}
-		marker := "  "
-		if p.Favorite {
-			marker = favStyle.Render("* ")
+		ptr := "  "
+		if i == m.selected {
+			ptr = "> "
 		}
-		line := fmt.Sprintf("%s%-26s %-30s%s", marker, truncate(name, 26), truncate(shortPath(p.Path, m.homeDir()), 30), gitStyle.Render(git))
+		star := " "
+		if p.Favorite {
+			star = favStyle.Render("*")
+		}
+		line := fmt.Sprintf("%s%s %-26s %-30s%s", ptr, star, truncate(name, 26), truncate(shortPath(p.Path, m.homeDir()), 30), gitStyle.Render(git))
 		if i == m.selected {
 			line = selStyle.Render(padRight(line, listWidth))
 		}
@@ -455,8 +459,8 @@ func (m Model) View() string {
 		if i < len(previewLines) {
 			right = previewLines[i]
 		}
-		b.WriteString(padRight(stripAnsi(left), listWidth))
-		b.WriteString("|")
+		b.WriteString(padRight(left, listWidth))
+		b.WriteString(dimStyle.Render("|"))
 		b.WriteString(" " + right + "\n")
 	}
 	b.WriteString(strings.Repeat("-", m.width) + "\n")
@@ -524,26 +528,6 @@ func visibleLen(s string) int {
 		out++
 	}
 	return out
-}
-
-func stripAnsi(s string) string {
-	var b strings.Builder
-	inEsc := false
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c == 0x1b {
-			inEsc = true
-			continue
-		}
-		if inEsc {
-			if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
-				inEsc = false
-			}
-			continue
-		}
-		b.WriteByte(c)
-	}
-	return b.String()
 }
 
 func orDefault(s, d string) string {
