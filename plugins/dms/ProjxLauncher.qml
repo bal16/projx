@@ -79,13 +79,29 @@ QtObject {
     function getItems(query) {
         var q = (query || "").trim();
         var ql = q.toLowerCase();
+        var tagFilter = null;
+        var textFilter = q;
+        if (q.indexOf("#") === 0) {
+            tagFilter = q.substring(1).toLowerCase();
+            textFilter = "";
+            ql = "";
+        }
         var results = [];
 
         // Existing projects
         for (var i = 0; i < root.cachedProjects.length; i++) {
             var p = root.cachedProjects[i];
             var name = p.name || p.path.split("/").pop();
-            if (q === "" || name.toLowerCase().indexOf(ql) >= 0 || p.path.toLowerCase().indexOf(ql) >= 0) {
+            // tag filter
+            if (tagFilter) {
+                var tags = (p.tags || "").toLowerCase().split(",");
+                var hasTag = false;
+                for (var ti = 0; ti < tags.length; ti++) {
+                    if (tags[ti].trim() === tagFilter) { hasTag = true; break; }
+                }
+                if (!hasTag) continue;
+            }
+            if (textFilter === "" || name.toLowerCase().indexOf(ql) >= 0 || p.path.toLowerCase().indexOf(ql) >= 0) {
                 var subtitle = shortPath(p.path);
                 if (p.gitBranch) {
                     subtitle += "  [" + p.gitBranch;

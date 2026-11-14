@@ -1,8 +1,8 @@
 --!nonstrict
 
 -- Project Manager launcher provider for Noctalia, backed by the pjx CLI.
--- Supports: opening projects, adding new projects from a path, and quick
--- configuration actions (scan, import, set default editor).
+-- Supports: opening projects, adding new projects from a path, tag filter
+-- (#tag), and quick configuration actions (scan, import, set default editor).
 
 local cachedProjects = nil
 local FIELD_SEP = "\31"
@@ -73,26 +73,49 @@ local function pathExists(path, onDone)
 	end)
 end
 
+local function hasTag(p, tag)
+	for t in (p.tags or ""):gmatch("[^,]+") do
+		if trim(t):lower() == tag:lower() then
+			return true
+		end
+	end
+	return false
+end
+
 local function makeProjectRows(projects, filter)
 	local home = noctalia.getenv("HOME") or ""
 	local rows = {}
+	-- Tag filter: query like "#Work" filters by tag.
+	local tagFilter = nil
+	local textFilter = filter
+	if filter:sub(1, 1) == "#" then
+		tagFilter = filter:sub(2)
+		textFilter = ""
+	end
 	for _, p in ipairs(projects) do
+		-- tag filter check
+		if tagFilter and not hasTag(p, tagFilter) then
+			goto continue
+		end
 		local name = projectName(p)
 		local score = 0
-		if filter ~= "" then
-			score = noctalia.fuzzyScore(filter, name)
+		if textFilter ~= "" then
+			score = noctalia.fuzzyScore(textFilter, name)
 			if score == nil then
-				score = noctalia.fuzzyScore(filter, p.path)
+				score = noctalia.fuzzyScore(textFilter, p.path)
 			end
 			if score == nil then
-				if name:lower():find(filter:lower(), 1, true) or p.path:lower():find(filter:lower(), 1, true) then
+				if
+					name:lower():find(textFilter:lower(), 1, true)
+					or p.path:lower():find(textFilter:lower(), 1, true)
+				then
 					score = 1
 				else
 					score = nil
 				end
 			end
 		end
-		if filter == "" or score ~= nil then
+		if textFilter == "" or score ~= nil then
 			local subtitle = p.path
 			if home ~= "" and p.path:sub(1, #home) == home then
 				subtitle = "~" .. p.path:sub(#home + 1)
@@ -113,9 +136,10 @@ local function makeProjectRows(projects, filter)
 				title = name,
 				subtitle = subtitle,
 				icon = icon,
-				score = (filter == "") and nil or score,
+				score = (textFilter == "") and nil or score,
 			})
 		end
+		::continue::
 	end
 	return rows
 end
@@ -134,6 +158,7 @@ local function utilRows(filter)
 	add("util:editor-zed", "Set default editor: zed", "pjx config set default_editor zed", "code")
 	add("util:editor-code", "Set default editor: vscode", "pjx config set default_editor code", "code")
 	add("util:editor-nvim", "Set default editor: nvim", "pjx config set default_editor nvim", "code")
+	add("util:refresh", "Refresh project list", "clear cache and reload", "refresh")
 	return rows
 end
 
@@ -150,7 +175,6 @@ local function showResults(query, projects, filter)
 		if expanded:sub(1, 2) == "~/" then
 			expanded = (noctalia.getenv("HOME") or "") .. expanded:sub(2)
 		end
-		-- check if already a project
 		local already = false
 		for _, p in ipairs(projects) do
 			if p.path == expanded then
@@ -179,7 +203,7 @@ local function showResults(query, projects, filter)
 		end
 	end
 
-	-- Utility entries: show when filter empty or matches config/scan/import keywords.
+	-- Utility entries.
 	local lower = filter:lower()
 	local showUtil = (filter == "")
 		or lower:find("scan", 1, true)
@@ -189,6 +213,7 @@ local function showResults(query, projects, filter)
 		or lower:find("editor", 1, true)
 		or lower:find("add", 1, true)
 		or lower:find("help", 1, true)
+		or lower:find("refresh", 1, true)
 	if showUtil then
 		for _, r in ipairs(utilRows(filter)) do
 			table.insert(rows, r)
@@ -268,6 +293,9 @@ function onActivate(id)
 				noctalia.notify("projx", "Import complete")
 				cachedProjects = nil
 			end)
+		elseif action == "refresh" then
+			cachedProjects = nil
+			noctalia.notify("projx", "Refreshed")
 		elseif action:sub(1, 7) == "editor-" then
 			local ed = action:sub(8)
 			noctalia.runAsync("pjx config set default_editor " .. ed .. " 2>&1", function(result)
