@@ -61,7 +61,7 @@ func (r *Repository) List(tag, group string, favoritesOnly bool) ([]model.Projec
 	return out, rows.Err()
 }
 
-// Get returns a project by id or name (case-insensitive name match).
+// Get returns a project by id, name (case-insensitive), or path.
 // If multiple projects share the same name, an error is returned.
 func (r *Repository) Get(idOrName string) (*model.Project, error) {
 	// Prefer exact id match.
@@ -92,6 +92,11 @@ func (r *Repository) Get(idOrName string) (*model.Project, error) {
 		return nil, err
 	}
 	if len(matches) == 0 {
+		// Fall back to path match: callers (launcher, scripts) often pass the
+		// project path as the identifier.
+		if byPath, perr := r.GetByPath(idOrName); perr == nil {
+			return byPath, nil
+		}
 		return nil, fmt.Errorf("project not found: %s", idOrName)
 	}
 	if len(matches) > 1 {

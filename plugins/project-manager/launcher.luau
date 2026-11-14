@@ -348,6 +348,7 @@ function onActivate(id)
     end
     if id:sub(1, 6) == "util:" then
         local action = id:sub(7)
+        noctalia.log("pjx: util action '" .. action .. "'")
         if action == "scan" then
             noctalia.runAsync("pjx scan 2>&1", function(result)
                 noctalia.notify("projx", "Scan complete")
