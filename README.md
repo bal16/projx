@@ -97,6 +97,14 @@ dms restart
 
 Then open the DMS launcher and type `pjx`.
 
+There is also a bar widget plugin (`plugins/dms-widget/`) showing the current
+project name in the bar:
+
+```sh
+cp -r /path/to/projx/plugins/dms-widget ~/.config/dms/plugins/projxCurrentProject
+dms restart
+```
+
 ### Shell completion
 
 pjx ships cobra-generated completion scripts:
