@@ -35,6 +35,10 @@ type Model struct {
 	opened       bool
 	openPath     string
 	openNew      bool
+	editing      bool
+	editIdx      int
+	editID       string
+	editInputs   []textinput.Model
 }
 
 // New creates a new TUI model.
@@ -45,10 +49,17 @@ func New(repo *db.Repository) Model {
 	ti.Width = 40
 
 	m := Model{
-		repo:   repo,
-		input:  ti,
-		mode:   "search",
-		status: "loading...",
+		repo:       repo,
+		input:      ti,
+		mode:       "search",
+		status:     "loading...",
+		editInputs: make([]textinput.Model, 5),
+	}
+	for i, label := range []string{"Name:", "Editor:", "Profile:", "Tags:", "Group:"} {
+		in := textinput.New()
+		in.Prompt = label + " "
+		in.CharLimit = 128
+		m.editInputs[i] = in
 	}
 	return m
 }
@@ -91,6 +102,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.input.Width = msg.Width - 4
+		for i := range m.editInputs {
+			m.editInputs[i].Width = msg.Width - 12
+		}
 		return m, nil
 
 	case projectsMsg:
@@ -121,6 +135,62 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		key := msg.String()
+
+		// Edit mode: form for the selected project.
+		if m.editing {
+			switch key {
+			case "esc":
+				m.editing = false
+				return m, nil
+			case "enter":
+				var ed model.Project
+				for _, p := range m.projects {
+					if p.ID == m.editID {
+						ed = p
+					}
+				}
+				if ed.ID != "" {
+					if v := strings.TrimSpace(m.editInputs[0].Value()); v != "" {
+						ed.Name = v
+					}
+					ed.Editor = strings.TrimSpace(m.editInputs[1].Value())
+					ed.Profile = strings.TrimSpace(m.editInputs[2].Value())
+					ed.Tags = splitCSV(m.editInputs[3].Value())
+					ed.Group = strings.TrimSpace(m.editInputs[4].Value())
+					if err := m.repo.Update(&ed); err != nil {
+						m.status = "error: " + err.Error()
+						return m, nil
+					}
+					m.editing = false
+					m.status = "updated " + ed.Name
+					return m, func() tea.Msg {
+						projects, err := m.repo.List("", "", false)
+						if err != nil {
+							return errMsg{err}
+						}
+						return projectsMsg{projects}
+					}
+				}
+				m.editing = false
+				return m, nil
+			case "tab", "down", "ctrl+j", "ctrl+n":
+				m.editIdx = (m.editIdx + 1) % len(m.editInputs)
+			case "shift+tab", "up", "ctrl+k", "ctrl+p":
+				m.editIdx = (m.editIdx + len(m.editInputs) - 1) % len(m.editInputs)
+			default:
+				var c tea.Cmd
+				m.editInputs[m.editIdx], c = m.editInputs[m.editIdx].Update(msg)
+				return m, c
+			}
+			for i := range m.editInputs {
+				if i == m.editIdx {
+					m.editInputs[i].Focus()
+				} else {
+					m.editInputs[i].Blur()
+				}
+			}
+			return m, nil
+		}
 
 		// Command mode
 		if m.mode == "command" {
@@ -299,8 +369,35 @@ func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.lastOutput = ""
+	case "e":
+		if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+			p := m.filtered[m.selected]
+			m.editing = true
+			m.editID = p.ID
+			m.editIdx = 0
+			if len(m.editInputs) == 0 {
+				m.editInputs = make([]textinput.Model, 5)
+				for i, label := range []string{"Name:", "Editor:", "Profile:", "Tags:", "Group:"} {
+					m.editInputs[i] = textinput.New()
+					m.editInputs[i].Prompt = label + " "
+					m.editInputs[i].CharLimit = 128
+				}
+			}
+			vals := []string{p.Name, p.Editor, p.Profile, strings.Join(p.Tags, ", "), p.Group}
+			for i := range m.editInputs {
+				m.editInputs[i].SetValue(vals[i])
+				m.editInputs[i].CursorEnd()
+			}
+			for i := range m.editInputs {
+				if i == 0 {
+					m.editInputs[i].Focus()
+				} else {
+					m.editInputs[i].Blur()
+				}
+			}
+		}
 	case "?":
-		m.lastOutput = "Normal mode keys:\n  j/k or arrows: navigate\n  gg/G: top/bottom\n  / or i: search mode\n  :: command mode\n  Enter/o: open   O: open new window\n  d: delete project   f: toggle favorite\n  p: toggle profiles view   r: refresh list   ?: this help\n  q: quit"
+		m.lastOutput = "Normal mode keys:\n  j/k or arrows: navigate\n  gg/G: top/bottom\n  / or i: search mode\n  :: command mode\n  Enter/o: open   O: open new window\n  e: edit project   d: delete project   f: toggle favorite\n  p: toggle profiles view   r: refresh list   ?: this help\n  q: quit"
 	}
 	return m, nil
 }
@@ -366,6 +463,25 @@ func (m Model) View() string {
 	}
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12"))
 	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	if m.editing {
+		var b strings.Builder
+		b.WriteString(headerStyle.Render("projx") + "  " + dimStyle.Render("[edit] "+m.status) + "\n")
+		b.WriteString(strings.Repeat("-", m.width) + "\n")
+		for i, in := range m.editInputs {
+			b.WriteString(in.View() + "\n")
+			switch i {
+			case 1:
+				b.WriteString("  " + dimStyle.Render("empty = follow default_editor") + "\n")
+			case 2:
+				b.WriteString("  " + dimStyle.Render("VS Code profile (empty = none)") + "\n")
+			case 3:
+				b.WriteString("  " + dimStyle.Render("comma separated") + "\n")
+			}
+		}
+		b.WriteString(strings.Repeat("-", m.width) + "\n")
+		b.WriteString(dimStyle.Render("Tab/arrows: field   Enter: save   Esc: cancel"))
+		return b.String()
+	}
 	selStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("15")).Background(lipgloss.Color("4"))
 	favStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
 	gitStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
@@ -483,7 +599,7 @@ func (m Model) View() string {
 	case "search":
 		b.WriteString(dimStyle.Render("type to filter | Esc: normal mode | Enter: open | Ctrl+O: new window"))
 	case "normal":
-		b.WriteString(dimStyle.Render("j/k: nav  gg/G: top/bottom  /: search  :: cmd  Enter/o: open  O: new win  d: del  f: fav  r: refresh  ?: help  q: quit"))
+		b.WriteString(dimStyle.Render("j/k: nav  gg/G: top/bottom  /: search  :: cmd  Enter/o: open  O: new win  e: edit  d: del  f: fav  r: refresh  ?: help  q: quit"))
 	case "command":
 		b.WriteString(dimStyle.Render("Enter: run  Esc: normal mode"))
 	}
@@ -530,6 +646,17 @@ func orDefault(s, d string) string {
 		return d
 	}
 	return s
+}
+
+// splitCSV parses a comma-separated input into a clean tag slice.
+func splitCSV(s string) []string {
+	out := []string{}
+	for _, part := range strings.Split(s, ",") {
+		if v := strings.TrimSpace(part); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 // Run starts the TUI and returns selected path + new-window flag.
