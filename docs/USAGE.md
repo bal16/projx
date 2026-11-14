@@ -126,7 +126,26 @@ pjx ws delete myset
 
 ## TUI keybindings
 
-- `/` search · `j`/`k` or arrows navigate · `g`/`G` top/bottom
-- `Enter` open · `Ctrl+O` open in new window · `Ctrl+R` refresh
-- `f` toggle favorite · `d` remove · `r` rename · `?` help · `Esc`/`q` quit
-- Command mode: `:` then `config`, `import`, `scan`, `favorite`, `set`, `ws`, `doctor`, `refresh`, `help`
+**Normal mode** (default after `Esc`):
+
+- `/` or `i` search · `j`/`k` or arrows navigate · `gg`/`G` top/bottom
+- `Enter` or `o` open · `O` open in new window
+- `e` edit project (name, editor, profile, tags, group)
+- `f` toggle favorite · `d` remove project
+- `p` toggle VS Code profiles view · `r` refresh list
+- `:` command mode · `?` help · `q` quit
+
+**Search mode** (`/` or `i`): type to filter projects
+
+- `Enter` open · `Ctrl+O` open in new window
+- `↑`/`↓` or `Ctrl+P`/`Ctrl+N` navigate · `Ctrl+R` refresh · `Esc` back to normal
+
+**Command mode** (`:`): run `pjx` subcommands (e.g. `scan`, `import --all`, `config get terminal`, `doctor`)
+
+- type to filter commands, `Tab`/`Shift+Tab` autocomplete · `Enter` run · `Esc` cancel
+- command output is shown in the preview pane
+
+**Edit mode** (`e`):
+
+- `Tab`/`↓` next field · `Shift+Tab`/`↑` previous field · `Enter` save · `Esc` cancel
+- Editor: empty = follow `default_editor`. Tags: comma-separated. Profile: VS Code profile name.
