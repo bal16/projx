@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/bal16/projx/internal/db"
 	"github.com/bal16/projx/internal/model"
@@ -377,12 +378,22 @@ func (m Model) View() string {
 	}
 	b.WriteString(strings.Repeat("-", m.width) + "\n")
 
-	listWidth := m.width
-	if m.width > 60 {
-		listWidth = m.width * 2 / 3
+	listWidth := m.width * 2 / 3
+	if avail := m.width - 40; m.width > 40 && listWidth > avail {
+		listWidth = avail // keep the preview at least ~38 cols
+	}
+	if listWidth > 90 {
+		listWidth = 90 // cap dead space on very wide screens
+	}
+	twoCol := m.width >= 60 && listWidth < m.width-2
+	if !twoCol {
+		listWidth = m.width
 	}
 
 	var listLines []string
+	nameCol := 26
+	// path column adapts to the list width; keep ~12 cols for the git tag
+	pathCol := min(max(listWidth-4-nameCol-12, 16), 48)
 	for i, p := range m.filtered {
 		name := p.Name
 		if name == "" {
@@ -404,7 +415,7 @@ func (m Model) View() string {
 		if p.Favorite {
 			star = favStyle.Render("*")
 		}
-		line := fmt.Sprintf("%s%s %-26s %-30s%s", ptr, star, truncate(name, 26), truncate(shortPath(p.Path, m.homeDir()), 30), gitStyle.Render(git))
+		line := fmt.Sprintf("%s%s %-*s %-*s%s", ptr, star, nameCol, truncate(name, nameCol), pathCol, truncate(shortPath(p.Path, m.homeDir()), pathCol), gitStyle.Render(git))
 		if i == m.selected {
 			line = selStyle.Render(padRight(line, listWidth))
 		}
@@ -456,8 +467,12 @@ func (m Model) View() string {
 			left = listLines[i]
 		}
 		right := ""
-		if i < len(previewLines) {
-			right = previewLines[i]
+		if twoCol && i < len(previewLines) {
+			right = truncate(previewLines[i], m.width-listWidth-3)
+		}
+		if !twoCol {
+			b.WriteString(left + "\n")
+			continue
 		}
 		b.WriteString(padRight(left, listWidth))
 		b.WriteString(dimStyle.Render("|"))
@@ -493,41 +508,21 @@ func shortPath(p, home string) string {
 }
 
 func truncate(s string, n int) string {
-	if len(s) <= n {
+	if ansi.StringWidth(s) <= n {
 		return s
 	}
-	if n <= 3 {
-		return s[:n]
+	if n <= 1 {
+		return ansi.Truncate(s, n, "")
 	}
-	return s[:n-1] + "…"
+	return ansi.Truncate(s, n-1, "…")
 }
 
 func padRight(s string, n int) string {
-	vis := visibleLen(s)
-	if vis >= n {
-		return s
+	w := ansi.StringWidth(s)
+	if w >= n {
+		return ansi.Truncate(s, n, "")
 	}
-	return s + strings.Repeat(" ", n-vis)
-}
-
-func visibleLen(s string) int {
-	out := 0
-	inEsc := false
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c == 0x1b {
-			inEsc = true
-			continue
-		}
-		if inEsc {
-			if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
-				inEsc = false
-			}
-			continue
-		}
-		out++
-	}
-	return out
+	return s + strings.Repeat(" ", n-w)
 }
 
 func orDefault(s, d string) string {
