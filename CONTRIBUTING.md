@@ -4,7 +4,7 @@ Thanks for your interest. projx is a Go CLI with Noctalia/DMS plugins.
 
 ## Development setup
 
-See the **Development** section in `README.md`. Quick version:
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Quick version:
 
 ```sh
 git clone <repo>
