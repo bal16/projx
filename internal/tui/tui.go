@@ -39,6 +39,8 @@ type Model struct {
 	editIdx      int
 	editID       string
 	editInputs   []textinput.Model
+	cmdSugs      []string
+	cmdSugSel    int
 }
 
 // New creates a new TUI model.
@@ -75,6 +77,36 @@ func (m Model) Init() tea.Cmd {
 	}
 }
 
+var cmdSuggestionsBase = []string{
+	"add", "config", "doctor", "export", "favorite", "group", "help",
+	"import", "list", "open", "profiles", "refresh", "remove", "rename",
+	"scan", "set", "tag", "tui", "untag", "version", "ws",
+}
+
+func (m *Model) updateCmdSuggestions() {
+	val := m.input.Value()
+	// complete first token only (simple, lazyvim-like command completion)
+	if strings.Contains(val, " ") {
+		m.cmdSugs = nil
+		m.cmdSugSel = 0
+		return
+	}
+	prefix := strings.ToLower(strings.TrimSpace(val))
+	if prefix == "" {
+		m.cmdSugs = append([]string(nil), cmdSuggestionsBase...)
+		m.cmdSugSel = 0
+		return
+	}
+	var out []string
+	for _, c := range cmdSuggestionsBase {
+		if strings.HasPrefix(c, prefix) {
+			out = append(out, c)
+		}
+	}
+	m.cmdSugs = out
+	m.cmdSugSel = 0
+}
+
 type projectsMsg struct{ projects []model.Project }
 type errMsg struct{ err error }
 type commandResultMsg struct {
@@ -109,8 +141,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case projectsMsg:
 		m.projects = msg.projects
-		m.status = fmt.Sprintf("%d projects", len(m.projects))
 		m.applyFilter()
+		if m.lastOutput == "" {
+			m.status = fmt.Sprintf("%d projects", len(m.projects))
+		}
 		return m, nil
 
 	case errMsg:
@@ -199,19 +233,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.mode = "normal"
 				m.input.SetValue("")
 				m.input.Blur()
+				m.cmdSugs = nil
 				return m, nil
 			case "enter":
 				cmd := strings.TrimSpace(m.input.Value())
 				m.input.SetValue("")
 				m.mode = "normal"
 				m.input.Blur()
+				m.cmdSugs = nil
 				if cmd == "" {
 					return m, nil
 				}
 				return m, m.runCommand(cmd)
+			case "tab":
+				if len(m.cmdSugs) > 0 {
+					m.input.SetValue(m.cmdSugs[m.cmdSugSel])
+					m.input.CursorEnd()
+					m.cmdSugSel = (m.cmdSugSel + 1) % len(m.cmdSugs)
+				}
+				return m, nil
+			case "shift+tab":
+				if len(m.cmdSugs) > 0 {
+					m.cmdSugSel = (m.cmdSugSel - 1 + len(m.cmdSugs)) % len(m.cmdSugs)
+					m.input.SetValue(m.cmdSugs[m.cmdSugSel])
+					m.input.CursorEnd()
+				}
+				return m, nil
 			}
 			var c tea.Cmd
 			m.input, c = m.input.Update(msg)
+			m.updateCmdSuggestions()
 			return m, c
 		}
 
@@ -281,6 +332,8 @@ func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
 	if m.pendingKey == "g" {
 		m.pendingKey = ""
 		if key == "g" {
+			m.lastOutput = ""
+			m.showProfiles = false
 			m.selected = 0
 			return m, nil
 		}
@@ -290,16 +343,22 @@ func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
 		m.quitting = true
 		return m, tea.Quit
 	case "j", "down":
+		m.lastOutput = ""
+		m.showProfiles = false
 		if m.selected < len(m.filtered)-1 {
 			m.selected++
 		}
 	case "k", "up":
+		m.lastOutput = ""
+		m.showProfiles = false
 		if m.selected > 0 {
 			m.selected--
 		}
 	case "g":
 		m.pendingKey = "g"
 	case "G":
+		m.lastOutput = ""
+		m.showProfiles = false
 		if len(m.filtered) > 0 {
 			m.selected = len(m.filtered) - 1
 		}
@@ -307,15 +366,22 @@ func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
 		m.mode = "search"
 		m.input.Focus()
 		m.input.Placeholder = "search projects..."
+		m.lastOutput = ""
+		m.showProfiles = false
 	case "i":
 		m.mode = "search"
 		m.input.Focus()
 		m.input.Placeholder = "search projects..."
+		m.lastOutput = ""
+		m.showProfiles = false
 	case ":":
 		m.mode = "command"
 		m.input.SetValue("")
 		m.input.Focus()
 		m.input.Placeholder = "command (scan, import, favorite, set, ws, config, doctor, refresh, help)"
+		m.lastOutput = ""
+		m.showProfiles = false
+		m.updateCmdSuggestions()
 	case "enter", "o":
 		if len(m.filtered) > 0 && m.selected < len(m.filtered) {
 			p := m.filtered[m.selected]
@@ -403,9 +469,6 @@ func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) applyFilter() {
-	if !m.showProfiles {
-		m.lastOutput = ""
-	}
 	if m.mode == "command" {
 		return
 	}
@@ -543,6 +606,27 @@ func (m Model) View() string {
 
 	var previewLines []string
 	switch {
+	case m.mode == "command":
+		previewLines = append(previewLines, headerStyle.Render("Commands"))
+		if len(m.cmdSugs) == 0 {
+			previewLines = append(previewLines, dimStyle.Render("  (no matches)"))
+		} else {
+			hi := m.cmdSugSel
+			cur := strings.TrimSpace(m.input.Value())
+			for i, s := range m.cmdSugs {
+				if s == cur {
+					hi = i
+					break
+				}
+			}
+			for i, s := range m.cmdSugs {
+				if i == hi {
+					previewLines = append(previewLines, selStyle.Render("> "+s))
+				} else {
+					previewLines = append(previewLines, "  "+s)
+				}
+			}
+		}
 	case m.lastOutput != "":
 		previewLines = append(previewLines, strings.Split(strings.TrimSpace(m.lastOutput), "\n")...)
 	case len(m.filtered) > 0 && m.selected < len(m.filtered):
@@ -571,6 +655,10 @@ func (m Model) View() string {
 		}
 	default:
 		previewLines = append(previewLines, dimStyle.Render("no selection"))
+	}
+	if m.mode == "command" && !twoCol {
+		listLines = previewLines
+		previewLines = nil
 	}
 
 	maxLines := m.height - 6
@@ -601,7 +689,7 @@ func (m Model) View() string {
 	case "normal":
 		b.WriteString(dimStyle.Render("j/k: nav  gg/G: top/bottom  /: search  :: cmd  Enter/o: open  O: new win  e: edit  d: del  f: fav  r: refresh  ?: help  q: quit"))
 	case "command":
-		b.WriteString(dimStyle.Render("Enter: run  Esc: normal mode"))
+		b.WriteString(dimStyle.Render("Tab: complete  Enter: run  Esc: cancel"))
 	}
 
 	return b.String()
