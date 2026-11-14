@@ -1,0 +1,8 @@
+{
+  "settings.new_window.label": "Open in new window",
+  "settings.new_window.description": "Open projects in a new editor window instead of reusing the existing one.",
+  "no-project": "no project",
+  "no-projects-found": "No projects found",
+  "loading": "Loading projects...",
+  "loading-subtitle": "querying pjx"
+}
