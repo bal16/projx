@@ -18,6 +18,7 @@ type Config struct {
 	DefaultEditor  string            `json:"default_editor"`
 	EditorCommands map[string]string `json:"editor_commands"` // editor name -> binary
 	EditorProfiles map[string]string `json:"editor_profiles"` // editor name -> default profile
+	Terminal       string            `json:"terminal"`        // terminal emulator for TUI editors; empty = auto-detect
 }
 
 // DefaultConfig returns sensible defaults.
@@ -75,6 +76,9 @@ func Load(repo *db.Repository) (*Config, error) {
 				}
 			}
 		}
+		if v, _ := repo.GetSetting("terminal"); v != "" {
+			cfg.Terminal = v
+		}
 		if v, _ := repo.GetSetting("scan_max_depth"); v != "" {
 			var n int
 			if _, err := fmt.Sscanf(v, "%d", &n); err == nil && n > 0 {
@@ -109,6 +113,7 @@ func Save(cfg *Config, repo *db.Repository) error {
 			_ = repo.SetSetting("scan_roots", string(b))
 		}
 		_ = repo.SetSetting("default_editor", cfg.DefaultEditor)
+		_ = repo.SetSetting("terminal", cfg.Terminal)
 		if b, _ := json.Marshal(cfg.EditorProfiles); true {
 			_ = repo.SetSetting("editor_profiles", string(b))
 		}

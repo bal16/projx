@@ -2,8 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
 
 	"github.com/spf13/cobra"
 
@@ -42,13 +40,9 @@ func newTuiCmd() *cobra.Command {
 				}
 			}
 
-			c := exec.Command(bin, argv...)
-			c.Stdout = os.Stdout
-			c.Stderr = os.Stderr
-			if err := c.Start(); err != nil {
+			if err := startEditor(a.Config, ed, bin, argv); err != nil {
 				return fmt.Errorf("launch %s: %w", bin, err)
 			}
-			_ = c.Process.Release()
 			if p != nil {
 				_ = a.Repo.TouchLastOpened(p.ID)
 			}

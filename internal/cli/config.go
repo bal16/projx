@@ -31,6 +31,8 @@ func runConfigGet(a *App, key string) error {
 	case "editor_commands":
 		b, _ := json.Marshal(a.Config.EditorCommands)
 		fmt.Println(string(b))
+	case "terminal":
+		fmt.Println(a.Config.Terminal)
 	default:
 		return fmt.Errorf("unknown key: %s", key)
 	}
@@ -67,6 +69,8 @@ func runConfigSet(a *App, key, value string) error {
 		a.Config.ScanRoots = roots
 	case key == "default_editor":
 		a.Config.DefaultEditor = value
+	case key == "terminal":
+		a.Config.Terminal = value
 	case key == "scan_max_depth":
 		var n int
 		if _, err := fmt.Sscanf(value, "%d", &n); err != nil {
@@ -100,7 +104,7 @@ func newConfigCmd() *cobra.Command {
 	}
 	get := &cobra.Command{
 		Use:   "get <key>",
-		Short: "Get a config value (scan_roots, default_editor, scan_max_depth, editor_profiles, editor_commands)",
+		Short: "Get a config value (scan_roots, default_editor, scan_max_depth, editor_profiles, editor_commands, terminal)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runConfigGet(requireApp(), args[0])
