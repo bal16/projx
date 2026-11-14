@@ -31,13 +31,13 @@ fmt-qml:
 		for f in plugins/dms/*.qml; do $(QMLFORMAT) -w $$f; done; \
 	else echo "qmlformat not found; skipping"; fi
 fmt-luau:
-	@if [ -x "$(STYLUA)" ]; then $(STYLUA) plugins/noctalia/; else echo "stylua not found; skipping"; fi
+	@if [ -x "$(STYLUA)" ]; then $(STYLUA) plugins/project-manager/; else echo "stylua not found; skipping"; fi
 
 fmt-check: fmt-go-check fmt-luau-check fmt-qml-check
 fmt-go-check:
 	@test -z "$$(gofmt -l .)" || { echo "gofmt issues:"; gofmt -l .; exit 1; }
 fmt-luau-check:
-	@if [ -x "$(STYLUA)" ]; then $(STYLUA) --check plugins/noctalia/; else echo "stylua not found; skipping"; fi
+	@if [ -x "$(STYLUA)" ]; then $(STYLUA) --check plugins/project-manager/; else echo "stylua not found; skipping"; fi
 fmt-qml-check:
 	@if command -v $(QMMLINT) >/dev/null 2>&1; then $(QMMLINT) plugins/dms/*.qml || echo "qmllint warnings (DMS components may be unresolved locally)"; else echo "qmllint not found; skipping"; fi
 
@@ -48,7 +48,7 @@ lint-go:
 lint-qml:
 	@if command -v $(QMMLINT) >/dev/null 2>&1; then $(QMMLINT) plugins/dms/*.qml || echo "qmllint warnings (DMS components may be unresolved locally)"; else echo "qmllint not found; skipping"; fi
 lint-luau:
-	@if [ -x "$(STYLUA)" ]; then $(STYLUA) --check plugins/noctalia/; else echo "stylua not found; skipping"; fi
+	@if [ -x "$(STYLUA)" ]; then $(STYLUA) --check plugins/project-manager/; else echo "stylua not found; skipping"; fi
 
 # --- Static analysis ---
 staticcheck:

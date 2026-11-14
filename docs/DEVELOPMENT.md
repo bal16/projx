@@ -47,7 +47,7 @@ projx/
 ├── cmd/pjx/              # CLI entry point
 ├── internal/              # Go packages
 ├── plugins/
-│   ├── noctalia/          # Noctalia v5 plugin (Luau)
+│   ├── project-manager/   # Noctalia v5 plugin (Luau)
 │   └── dms/               # DMS plugin (QML)
 ├── scripts/               # install-tools.sh
 ├── .github/workflows/     # CI

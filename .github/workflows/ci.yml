@@ -77,4 +77,4 @@ jobs:
           unzip -o /tmp/stylua.zip -d /tmp/stylua
           sudo mv /tmp/stylua/stylua /usr/local/bin/
       - name: Format check
-        run: stylua --check plugins/noctalia/
+        run: stylua --check plugins/project-manager/

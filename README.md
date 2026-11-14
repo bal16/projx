@@ -56,7 +56,7 @@ pjx tui
 
 ## Plugins
 
-- **Noctalia v5** — `plugins/noctalia/` (launcher trigger `pjx`)
+- **Noctalia v5** — `plugins/project-manager/` (launcher trigger `pjx`)
 - **DMS (DankMaterialShell)** — `plugins/dms/` (launcher trigger `pjx`)
 
 Both call `pjx list --format=delimited` and `pjx open`. See

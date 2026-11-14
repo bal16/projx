@@ -89,7 +89,7 @@ func newVersionCmd() *cobra.Command {
 			fmt.Println("pjx 0.2.0")
 			if showPlugins {
 				fmt.Println("plugins:")
-				fmt.Println("  noctalia: 0.2.0 (plugins/noctalia)")
+				fmt.Println("  noctalia: 0.2.0 (plugins/project-manager)")
 				fmt.Println("  dms:      0.2.0 (plugins/dms)")
 				fmt.Println("  dms-widget: 0.2.0 (plugins/dms-widget)")
 			}
