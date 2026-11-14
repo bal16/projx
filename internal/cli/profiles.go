@@ -9,6 +9,8 @@ import (
 	"sort"
 
 	"github.com/spf13/cobra"
+
+	"github.com/bal16/projx/internal/platform"
 )
 
 // VSCodeProfile represents a known VS Code profile.
@@ -20,8 +22,8 @@ type VSCodeProfile struct {
 // listVSCodeProfiles reads profile names from VS Code's sync data and
 // profile directories. Returns profiles sorted by name.
 func listVSCodeProfiles() []VSCodeProfile {
-	home, _ := os.UserHomeDir()
-	base := filepath.Join(home, ".config", "Code", "User")
+	base, _ := platform.VSCodeBaseDir("code")
+	base = filepath.Join(base, "User")
 
 	// name map from sync data
 	nameMap := map[string]string{}

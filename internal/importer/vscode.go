@@ -12,6 +12,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/bal16/projx/internal/model"
+	"github.com/bal16/projx/internal/platform"
 )
 
 // VSCodeImporter reads recent workspaces from a VS Code variant.
@@ -101,17 +102,11 @@ func vscodeDBPath(variant string) string {
 	if v := os.Getenv("PROJX_VSCODE_DB"); v != "" {
 		return v
 	}
-	home, _ := os.UserHomeDir()
-	dirs := map[string]string{
-		"code":     filepath.Join(home, ".config", "Code", "User", "globalStorage", "state.vscdb"),
-		"codium":   filepath.Join(home, ".config", "VSCodium", "User", "globalStorage", "state.vscdb"),
-		"cursor":   filepath.Join(home, ".config", "Cursor", "User", "globalStorage", "state.vscdb"),
-		"windsurf": filepath.Join(home, ".config", "Windsurf", "User", "globalStorage", "state.vscdb"),
+	pp, err := platform.VSCodeStateDB(variant)
+	if err != nil {
+		return ""
 	}
-	if p, ok := dirs[variant]; ok {
-		return p
-	}
-	return dirs["code"]
+	return pp
 }
 
 func uriToPath(u string) string {

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/bal16/projx/internal/model"
+	"github.com/bal16/projx/internal/platform"
 )
 
 // ProjectManagerImporter reads projects from Alessandro Fragnani's
@@ -89,14 +90,12 @@ func (p ProjectManagerImporter) Import() ([]model.Project, error) {
 }
 
 func projectManagerPath(variant string) string {
-	home, _ := os.UserHomeDir()
-	dirs := map[string]string{
-		"code":   filepath.Join(home, ".config", "Code", "User", "globalStorage", "alefragnani.project-manager", "projects.json"),
-		"codium": filepath.Join(home, ".config", "VSCodium", "User", "globalStorage", "alefragnani.project-manager", "projects.json"),
-		"cursor": filepath.Join(home, ".config", "Cursor", "User", "globalStorage", "alefragnani.project-manager", "projects.json"),
+	if v := os.Getenv("PROJX_PM_JSON"); v != "" {
+		return v
 	}
-	if p, ok := dirs[variant]; ok {
-		return p
+	pp, err := platform.VSCodeProjectManagerJSON(variant)
+	if err != nil {
+		return ""
 	}
-	return dirs["code"]
+	return pp
 }

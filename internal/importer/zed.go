@@ -12,6 +12,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/bal16/projx/internal/model"
+	"github.com/bal16/projx/internal/platform"
 )
 
 // ZedImporter reads Zed's recent workspaces.
@@ -118,19 +119,18 @@ func (ZedImporter) Import() ([]model.Project, error) {
 }
 
 func zedDBPath() string {
-	// Allow override via env for testing.
 	if v := os.Getenv("PROJX_ZED_DB"); v != "" {
 		return v
 	}
-	home, _ := os.UserHomeDir()
-	candidates := []string{
-		filepath.Join(home, ".local", "share", "zed", "db", "0-stable", "db.sqlite"),
-		filepath.Join(home, ".local", "share", "zed", "db", "0-preview", "db.sqlite"),
-	}
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			return c
+	for _, ch := range []string{"stable", "preview"} {
+		pp, err := platform.ZedDBPath(ch)
+		if err != nil {
+			continue
+		}
+		if _, err := os.Stat(pp); err == nil {
+			return pp
 		}
 	}
-	return candidates[0]
+	pp, _ := platform.ZedDBPath("stable")
+	return pp
 }
