@@ -16,38 +16,34 @@ import (
 
 // Model is the Bubble Tea model for the project picker.
 type Model struct {
-	repo     *db.Repository
-	projects []model.Project
-	filtered []model.Project
-
+	repo       *db.Repository
+	projects   []model.Project
+	filtered   []model.Project
 	input      textinput.Model
-	mode       string // "filter" or "command"
-	lastOutput string
+	mode       string // "search", "normal", or "command"
+	pendingKey string
 	selected   int
 	width      int
 	height     int
-
-	status   string
-	quitting bool
-
-	// actions
-	opened   bool
-	openPath string
-	openNew  bool
+	status     string
+	lastOutput string
+	quitting   bool
+	opened     bool
+	openPath   string
+	openNew    bool
 }
 
 // New creates a new TUI model.
 func New(repo *db.Repository) Model {
 	ti := textinput.New()
 	ti.Placeholder = "search projects..."
-	ti.Focus()
 	ti.CharLimit = 64
 	ti.Width = 40
 
 	m := Model{
 		repo:   repo,
 		input:  ti,
-		mode:   "filter",
+		mode:   "search",
 		status: "loading...",
 	}
 	return m
@@ -72,6 +68,19 @@ type commandResultMsg struct {
 	err    error
 }
 
+func (m Model) runCommand(cmd string) tea.Cmd {
+	return func() tea.Msg {
+		exe, _ := os.Executable()
+		parts := strings.Fields(cmd)
+		if len(parts) == 0 {
+			return commandResultMsg{cmd: cmd, output: ""}
+		}
+		c := exec.Command(exe, parts...)
+		out, err := c.CombinedOutput()
+		return commandResultMsg{cmd: cmd, output: string(out), err: err}
+	}
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -89,6 +98,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errMsg:
 		m.status = "error: " + msg.err.Error()
 		return m, nil
+
 	case commandResultMsg:
 		m.lastOutput = msg.output
 		if msg.err != nil {
@@ -97,7 +107,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.status = "ran: " + msg.cmd
 		}
-		// refresh project list after mutating commands
 		return m, func() tea.Msg {
 			projects, err := m.repo.List("", "", false)
 			if err != nil {
@@ -107,22 +116,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.KeyMsg:
+		key := msg.String()
+
 		// Command mode
 		if m.mode == "command" {
-			switch msg.String() {
+			switch key {
 			case "esc":
-				m.mode = "filter"
+				m.mode = "normal"
 				m.input.SetValue("")
-				m.input.Placeholder = "search projects..."
-				m.applyFilter()
+				m.input.Blur()
 				return m, nil
 			case "enter":
 				cmd := strings.TrimSpace(m.input.Value())
 				m.input.SetValue("")
-				m.mode = "filter"
-				m.input.Placeholder = "search projects..."
+				m.mode = "normal"
+				m.input.Blur()
 				if cmd == "" {
-					m.applyFilter()
 					return m, nil
 				}
 				return m, m.runCommand(cmd)
@@ -131,16 +140,98 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.input, c = m.input.Update(msg)
 			return m, c
 		}
-		switch msg.String() {
-		case "ctrl+c", "esc", "q":
+
+		// Search mode (fuzzy): typing filters
+		if m.mode == "search" {
+			switch key {
+			case "ctrl+c":
+				m.quitting = true
+				return m, tea.Quit
+			case "esc":
+				m.mode = "normal"
+				m.input.Blur()
+				m.pendingKey = ""
+				return m, nil
+			case "enter":
+				if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+					p := m.filtered[m.selected]
+					m.opened = true
+					m.openPath = p.Path
+					m.openNew = false
+					_ = m.repo.TouchLastOpened(p.ID)
+					return m, tea.Quit
+				}
+			case "ctrl+o":
+				if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+					p := m.filtered[m.selected]
+					m.opened = true
+					m.openPath = p.Path
+					m.openNew = true
+					_ = m.repo.TouchLastOpened(p.ID)
+					return m, tea.Quit
+				}
+			case "up", "ctrl+p", "ctrl+k":
+				if m.selected > 0 {
+					m.selected--
+				}
+			case "down", "ctrl+j":
+				if m.selected < len(m.filtered)-1 {
+					m.selected++
+				}
+			case "ctrl+r":
+				return m, func() tea.Msg {
+					projects, _ := m.repo.List("", "", false)
+					return projectsMsg{projects}
+				}
+			default:
+				var c tea.Cmd
+				m.input, c = m.input.Update(msg)
+				m.applyFilter()
+				return m, c
+			}
+			return m, nil
+		}
+
+		// Normal mode (Vim-like)
+		if m.pendingKey == "g" {
+			m.pendingKey = ""
+			if key == "g" {
+				m.selected = 0
+				return m, nil
+			}
+		}
+		switch key {
+		case "ctrl+c", "q":
 			m.quitting = true
 			return m, tea.Quit
+		case "j", "down":
+			if m.selected < len(m.filtered)-1 {
+				m.selected++
+			}
+		case "k", "up":
+			if m.selected > 0 {
+				m.selected--
+			}
+		case "g":
+			m.pendingKey = "g"
+		case "G":
+			if len(m.filtered) > 0 {
+				m.selected = len(m.filtered) - 1
+			}
+		case "/":
+			m.mode = "search"
+			m.input.Focus()
+			m.input.Placeholder = "search projects..."
+		case "i":
+			m.mode = "search"
+			m.input.Focus()
+			m.input.Placeholder = "search projects..."
 		case ":":
 			m.mode = "command"
 			m.input.SetValue("")
+			m.input.Focus()
 			m.input.Placeholder = "command (scan, import, favorite, set, ws, config, doctor, refresh, help)"
-			return m, nil
-		case "enter":
+		case "enter", "o":
 			if len(m.filtered) > 0 && m.selected < len(m.filtered) {
 				p := m.filtered[m.selected]
 				m.opened = true
@@ -149,7 +240,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				_ = m.repo.TouchLastOpened(p.ID)
 				return m, tea.Quit
 			}
-		case "ctrl+o":
+		case "O":
 			if len(m.filtered) > 0 && m.selected < len(m.filtered) {
 				p := m.filtered[m.selected]
 				m.opened = true
@@ -158,47 +249,46 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				_ = m.repo.TouchLastOpened(p.ID)
 				return m, tea.Quit
 			}
-		case "up", "ctrl+p", "ctrl+k":
-			if m.selected > 0 {
-				m.selected--
+		case "d":
+			if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+				p := m.filtered[m.selected]
+				_ = m.repo.Remove(p.ID)
+				return m, func() tea.Msg {
+					projects, _ := m.repo.List("", "", false)
+					return projectsMsg{projects}
+				}
 			}
-		case "down", "ctrl+j":
-			if m.selected < len(m.filtered)-1 {
-				m.selected++
+		case "f":
+			if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+				pp := m.filtered[m.selected]
+				pp.Favorite = !pp.Favorite
+				_ = m.repo.Update(&pp)
+				return m, func() tea.Msg {
+					projects, _ := m.repo.List("", "", false)
+					return projectsMsg{projects}
+				}
 			}
-		case "ctrl+r":
+		case "r":
 			return m, func() tea.Msg {
-				// refresh all
-				projs, _ := m.repo.List("", "", false)
-				return projectsMsg{projs}
+				projects, _ := m.repo.List("", "", false)
+				return projectsMsg{projects}
 			}
-		default:
-			var cmd tea.Cmd
-			m.input, cmd = m.input.Update(msg)
-			m.applyFilter()
-			return m, cmd
+		case "?":
+			m.lastOutput = "Normal mode keys:\n  j/k or arrows: navigate\n  gg/G: top/bottom\n  / or i: search mode\n  :: command mode\n  Enter/o: open   O: open new window\n  d: delete project   f: toggle favorite\n  r: refresh list   ?: this help\n  q: quit"
 		}
+		return m, nil
 	}
+
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
 	return m, cmd
 }
 
-func (m Model) runCommand(cmd string) tea.Cmd {
-	return func() tea.Msg {
-		exe, _ := os.Executable()
-		parts := strings.Fields(cmd)
-		if len(parts) == 0 {
-			return commandResultMsg{cmd: cmd, output: ""}
-		}
-		c := exec.Command(exe, parts...)
-		out, err := c.CombinedOutput()
-		return commandResultMsg{cmd: cmd, output: string(out), err: err}
-	}
-}
-
 func (m *Model) applyFilter() {
 	m.lastOutput = ""
+	if m.mode == "command" {
+		return
+	}
 	q := strings.ToLower(strings.TrimSpace(m.input.Value()))
 	if q == "" {
 		m.filtered = append([]model.Project(nil), m.projects...)
@@ -211,7 +301,6 @@ func (m *Model) applyFilter() {
 				out = append(out, p)
 			}
 		}
-		// sort: favorites first, then by score (contains position)
 		sort.SliceStable(out, func(i, j int) bool {
 			if out[i].Favorite != out[j].Favorite {
 				return out[i].Favorite
@@ -242,19 +331,18 @@ func (m Model) View() string {
 	gitStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
 
 	var b strings.Builder
-	modeLabel := "filter"
-	if m.mode == "command" {
-		modeLabel = "command"
-	}
+	modeLabel := m.mode
 	b.WriteString(headerStyle.Render("projx") + "  " + dimStyle.Render("["+modeLabel+"] "+m.status) + "\n")
-	b.WriteString(m.input.View() + "\n")
-	b.WriteString(strings.Repeat("─", m.width) + "\n")
+	if m.mode == "search" || m.mode == "command" {
+		b.WriteString(m.input.View() + "\n")
+	}
+	b.WriteString(strings.Repeat("-", m.width) + "\n")
 
 	listWidth := m.width
 	if m.width > 60 {
 		listWidth = m.width * 2 / 3
 	}
-	// Build list lines
+
 	var listLines []string
 	for i, p := range m.filtered {
 		name := p.Name
@@ -283,7 +371,6 @@ func (m Model) View() string {
 		listLines = append(listLines, dimStyle.Render("  no projects"))
 	}
 
-	// Preview
 	var previewLines []string
 	switch {
 	case m.lastOutput != "":
@@ -316,7 +403,6 @@ func (m Model) View() string {
 		previewLines = append(previewLines, dimStyle.Render("no selection"))
 	}
 
-	// Render side by side
 	maxLines := m.height - 6
 	if maxLines < 5 {
 		maxLines = 5
@@ -331,11 +417,18 @@ func (m Model) View() string {
 			right = previewLines[i]
 		}
 		b.WriteString(padRight(stripAnsi(left), listWidth))
-		b.WriteString("│")
+		b.WriteString("|")
 		b.WriteString(" " + right + "\n")
 	}
-	b.WriteString(strings.Repeat("─", m.width) + "\n")
-	b.WriteString(dimStyle.Render(": command mode  /  Enter: open  Ctrl+O: new window  Ctrl+R: refresh  Esc: quit"))
+	b.WriteString(strings.Repeat("-", m.width) + "\n")
+	switch m.mode {
+	case "search":
+		b.WriteString(dimStyle.Render("type to filter | Esc: normal mode | Enter: open | Ctrl+O: new window"))
+	case "normal":
+		b.WriteString(dimStyle.Render("j/k: nav  gg/G: top/bottom  /: search  :: cmd  Enter/o: open  O: new win  d: del  f: fav  r: refresh  ?: help  q: quit"))
+	case "command":
+		b.WriteString(dimStyle.Render("Enter: run  Esc: normal mode"))
+	}
 
 	return b.String()
 }
@@ -345,12 +438,9 @@ func (m Model) homeDir() string {
 	return h
 }
 
-// Opened returns whether a project was selected.
 func (m Model) Opened() bool     { return m.opened }
 func (m Model) OpenPath() string { return m.openPath }
 func (m Model) OpenNew() bool    { return m.openNew }
-
-// --- helpers ---
 
 func baseName(p string) string {
 	parts := strings.Split(strings.TrimRight(p, "/"), "/")
@@ -378,7 +468,6 @@ func truncate(s string, n int) string {
 }
 
 func padRight(s string, n int) string {
-	// pad based on visible length (strip ansi)
 	vis := visibleLen(s)
 	if vis >= n {
 		return s
@@ -387,7 +476,6 @@ func padRight(s string, n int) string {
 }
 
 func visibleLen(s string) int {
-	// strip ansi escape sequences
 	out := 0
 	inEsc := false
 	for i := 0; i < len(s); i++ {
