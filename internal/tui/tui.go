@@ -448,7 +448,6 @@ func (m Model) Opened() bool     { return m.opened }
 func (m Model) OpenPath() string { return m.openPath }
 func (m Model) OpenNew() bool    { return m.openNew }
 
-
 func shortPath(p, home string) string {
 	if home != "" && strings.HasPrefix(p, home) {
 		return "~" + p[len(home):]
