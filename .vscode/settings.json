@@ -1,0 +1,16 @@
+{
+  "go.useLanguageServer": true,
+  "go.lintTool": "golangci-lint",
+  "go.lintFlags": ["--fast"],
+  "go.formatTool": "gofmt",
+  "go.testFlags": ["-v"],
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "editor.formatOnSave": true,
+  "editor.rulers": [100],
+  "editor.trimAutoWhitespace": true,
+  "editor.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "go.toolsManagement.autoUpdate": false
+}

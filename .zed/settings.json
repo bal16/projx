@@ -1,0 +1,21 @@
+{
+  "tab_size": 4,
+  "hard_tabs": false,
+  "soft_wrap": "none",
+  "format_on_save": "on",
+  "ensure_final_newline_on_save": true,
+  "remove_trailing_whitespace_on_save": true,
+  "preferred_line_length": 100,
+  "show_whitespaces": "selection",
+  "indent_guides": {
+    "enabled": true
+  },
+  "lsp": {
+    "gopls": {
+      "initialization_options": {
+        "gofumpt": true,
+        "staticcheck": true
+      }
+    }
+  }
+}
