@@ -318,7 +318,7 @@ function onActivate(id)
     if id == "" then
         return
     end
-    if id:sub(1, 4) == "add:" then
+    if id:match("^add:") then
         local path = id:sub(5)
         noctalia.runAsync("pjx add " .. shellQuote(path) .. " 2>&1", function(result)
             if result.exitCode ~= 0 then
@@ -330,8 +330,8 @@ function onActivate(id)
         end)
         return
     end
-    if id:sub(1, 13) == "vscprofile:" then
-        local action = id:sub(14)
+    if id:match("^vscprofile:") then
+        local action = id:sub(12)
         if action:sub(1, 7) == "create:" then
             local name = action:sub(8)
             noctalia.runAsync("pjx profiles create " .. shellQuote(name) .. " 2>&1", function(result)
@@ -346,8 +346,8 @@ function onActivate(id)
         end
         return
     end
-    if id:sub(1, 6) == "util:" then
-        local action = id:sub(7)
+    if id:match("^util:") then
+        local action = id:sub(6)
         noctalia.log("pjx: util action '" .. action .. "'")
         if action == "scan" then
             noctalia.runAsync("pjx scan 2>&1", function(result)
