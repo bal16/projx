@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"sort"
 	"strings"
 
@@ -19,10 +20,12 @@ type Model struct {
 	projects []model.Project
 	filtered []model.Project
 
-	input    textinput.Model
-	selected int
-	width    int
-	height   int
+	input      textinput.Model
+	mode       string // "filter" or "command"
+	lastOutput string
+	selected   int
+	width      int
+	height     int
 
 	status   string
 	quitting bool
@@ -44,6 +47,7 @@ func New(repo *db.Repository) Model {
 	m := Model{
 		repo:   repo,
 		input:  ti,
+		mode:   "filter",
 		status: "loading...",
 	}
 	return m
@@ -62,6 +66,11 @@ func (m Model) Init() tea.Cmd {
 
 type projectsMsg struct{ projects []model.Project }
 type errMsg struct{ err error }
+type commandResultMsg struct {
+	cmd    string
+	output string
+	err    error
+}
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -80,12 +89,57 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errMsg:
 		m.status = "error: " + msg.err.Error()
 		return m, nil
+	case commandResultMsg:
+		m.lastOutput = msg.output
+		if msg.err != nil {
+			m.status = "cmd error: " + msg.err.Error()
+			m.lastOutput = msg.err.Error() + "\n" + msg.output
+		} else {
+			m.status = "ran: " + msg.cmd
+		}
+		// refresh project list after mutating commands
+		return m, func() tea.Msg {
+			projects, err := m.repo.List("", "", false)
+			if err != nil {
+				return errMsg{err}
+			}
+			return projectsMsg{projects}
+		}
 
 	case tea.KeyMsg:
+		// Command mode
+		if m.mode == "command" {
+			switch msg.String() {
+			case "esc":
+				m.mode = "filter"
+				m.input.SetValue("")
+				m.input.Placeholder = "search projects..."
+				m.applyFilter()
+				return m, nil
+			case "enter":
+				cmd := strings.TrimSpace(m.input.Value())
+				m.input.SetValue("")
+				m.mode = "filter"
+				m.input.Placeholder = "search projects..."
+				if cmd == "" {
+					m.applyFilter()
+					return m, nil
+				}
+				return m, m.runCommand(cmd)
+			}
+			var c tea.Cmd
+			m.input, c = m.input.Update(msg)
+			return m, c
+		}
 		switch msg.String() {
 		case "ctrl+c", "esc", "q":
 			m.quitting = true
 			return m, tea.Quit
+		case ":":
+			m.mode = "command"
+			m.input.SetValue("")
+			m.input.Placeholder = "command (scan, import, favorite, set, ws, config, doctor, refresh, help)"
+			return m, nil
 		case "enter":
 			if len(m.filtered) > 0 && m.selected < len(m.filtered) {
 				p := m.filtered[m.selected]
@@ -130,7 +184,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m Model) runCommand(cmd string) tea.Cmd {
+	return func() tea.Msg {
+		exe, _ := os.Executable()
+		parts := strings.Fields(cmd)
+		if len(parts) == 0 {
+			return commandResultMsg{cmd: cmd, output: ""}
+		}
+		c := exec.Command(exe, parts...)
+		out, err := c.CombinedOutput()
+		return commandResultMsg{cmd: cmd, output: string(out), err: err}
+	}
+}
+
 func (m *Model) applyFilter() {
+	m.lastOutput = ""
 	q := strings.ToLower(strings.TrimSpace(m.input.Value()))
 	if q == "" {
 		m.filtered = append([]model.Project(nil), m.projects...)
@@ -174,7 +242,11 @@ func (m Model) View() string {
 	gitStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
 
 	var b strings.Builder
-	b.WriteString(headerStyle.Render("projx") + "  " + dimStyle.Render(m.status) + "\n")
+	modeLabel := "filter"
+	if m.mode == "command" {
+		modeLabel = "command"
+	}
+	b.WriteString(headerStyle.Render("projx") + "  " + dimStyle.Render("["+modeLabel+"] "+m.status) + "\n")
 	b.WriteString(m.input.View() + "\n")
 	b.WriteString(strings.Repeat("─", m.width) + "\n")
 
@@ -213,7 +285,11 @@ func (m Model) View() string {
 
 	// Preview
 	var previewLines []string
-	if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+	if m.lastOutput != "" {
+		for _, line := range strings.Split(strings.TrimSpace(m.lastOutput), "\n") {
+			previewLines = append(previewLines, line)
+		}
+	} else if len(m.filtered) > 0 && m.selected < len(m.filtered) {
 		p := m.filtered[m.selected]
 		previewLines = append(previewLines, headerStyle.Render("Preview"))
 		previewLines = append(previewLines, "Name:   "+p.Name)
@@ -260,7 +336,7 @@ func (m Model) View() string {
 		b.WriteString(" " + right + "\n")
 	}
 	b.WriteString(strings.Repeat("─", m.width) + "\n")
-	b.WriteString(dimStyle.Render("Enter: open  Ctrl+O: new window  Ctrl+R: refresh  Esc: quit"))
+	b.WriteString(dimStyle.Render(": command mode  /  Enter: open  Ctrl+O: new window  Ctrl+R: refresh  Esc: quit"))
 
 	return b.String()
 }
