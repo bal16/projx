@@ -40,14 +40,10 @@ func runAdd(a *App, path string, ap addParams) error {
 	if name == "" {
 		name = filepath.Base(abs)
 	}
-	editor := ap.editor
-	if editor == "" {
-		editor = a.Config.DefaultEditor
-	}
 	p := &model.Project{
 		Name:     name,
 		Path:     abs,
-		Editor:   editor,
+		Editor:   ap.editor, // per-project override only; leave empty to follow default_editor
 		Profile:  ap.profile,
 		Tags:     ap.tags,
 		Group:    ap.group,

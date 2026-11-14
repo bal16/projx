@@ -66,10 +66,9 @@ func (v VSCodeImporter) Import() ([]model.Project, error) {
 		return nil, fmt.Errorf("parse recentlyOpened: %w", err)
 	}
 
+	// Keep the variant name ("code", "cursor", ...) so it matches
+	// EditorCommands and the vscode-variant handling in open.
 	editor := v.Variant
-	if editor == "code" {
-		editor = "vscode"
-	}
 	var out []model.Project
 	for _, e := range payload.Entries {
 		p := ""
