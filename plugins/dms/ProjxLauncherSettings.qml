@@ -52,4 +52,11 @@ PluginSettings {
         description: "List saved projects in the launcher"
         defaultValue: true
     }
+
+    BoolSetting {
+        settingKey: "newWindow"
+        label: "Open in New Window"
+        description: "Pass --new-window when opening a project"
+        defaultValue: false
+    }
 }
