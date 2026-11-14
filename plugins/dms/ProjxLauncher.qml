@@ -175,8 +175,18 @@ QtObject {
                 { name: "Set default editor: zed", comment: "pjx config set default_editor zed", action: "util:editor-zed", icon: "material:code", categories: ["projx"] },
                 { name: "Set default editor: vscode", comment: "pjx config set default_editor code", action: "util:editor-code", icon: "material:code", categories: ["projx"] },
                 { name: "Set default editor: nvim", comment: "pjx config set default_editor nvim", action: "util:editor-nvim", icon: "material:code", categories: ["projx"] },
-                { name: "Refresh project list", comment: "clear cache and reload", action: "util:refresh", icon: "material:refresh", categories: ["projx"] }
+                { name: "Refresh project list", comment: "clear cache and reload", action: "util:refresh", icon: "material:refresh", categories: ["projx"] },
+                { name: "List VS Code profiles", comment: "show known VS Code profiles", action: "util:profiles", icon: "material:person", categories: ["projx"] }
             ];
+            // Create profile from query
+            if (lowerQuery.indexOf("profile") >= 0 || lowerQuery.indexOf("prof") >= 0) {
+                var pname = trimmed.replace(/^.*(?:create|new)\s+/i, "").trim();
+                if (pname !== "" && pname !== trimmed) {
+                    items.push({ name: "Create VS Code profile: " + pname, comment: "pjx profiles create " + pname, action: "vscprofile:create:" + pname, icon: "material:add", categories: ["projx"] });
+                } else {
+                    items.push({ name: "Create VS Code profile", comment: "type: profile create <name>", action: "vscprofile:createprompt", icon: "material:add", categories: ["projx"] });
+                }
+            }
             for (var u = 0; u < utils.length; u++) {
                 var ut = utils[u];
                 if (trimmed === "" || ut.name.toLowerCase().indexOf(lowerQuery) >= 0 ||
@@ -210,7 +220,17 @@ QtObject {
             Quickshell.execDetached([exe, "add", actionData]);
             if (ToastService) ToastService.showInfo("Adding project: " + actionData);
             root.refreshCache();
-        } else if (actionType === "util") {
+        if (actionType === "vscprofile") {
+            if (actionData.indexOf("create:") === 0) {
+                var pname = actionData.substring(7);
+                Quickshell.execDetached([exe, "profiles", "create", pname]);
+                if (ToastService) ToastService.showInfo("Creating profile: " + pname);
+            } else if (actionData === "createprompt") {
+                if (ToastService) ToastService.showInfo("Type: profile create <name>");
+            }
+            return;
+        }
+        if (actionType === "util") {
             if (actionData === "scan") {
                 Quickshell.execDetached([exe, "scan"]);
                 if (ToastService) ToastService.showInfo("Scanning directories");
@@ -230,6 +250,9 @@ QtObject {
             } else if (actionData === "refresh") {
                 root.refreshCache();
                 if (ToastService) ToastService.showInfo("Refreshed");
+            } else if (actionData === "profiles") {
+                Quickshell.execDetached([exe, "profiles"]);
+                if (ToastService) ToastService.showInfo("Listing VS Code profiles");
             }
         }
     }

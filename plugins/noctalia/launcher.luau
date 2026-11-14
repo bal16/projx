@@ -166,6 +166,36 @@ local function utilRows(filter)
     add("util:editor-code", "Set default editor: vscode", "pjx config set default_editor code", "code")
     add("util:editor-nvim", "Set default editor: nvim", "pjx config set default_editor nvim", "code")
     add("util:refresh", "Refresh project list", "clear cache and reload", "refresh")
+    add("util:profiles", "List VS Code profiles", "show known VS Code profiles", "user")
+    -- Create profile from query text
+    local qLower = (filter or ""):lower()
+    if qLower:find("profile", 1, true) or qLower:find("prof", 1, true) then
+        local name = nil
+        for _, pat in ipairs({ "create%s+(.+)", "new%s+(.+)" }) do
+            local m = filter:match(pat)
+            if m and trim(m) ~= "" then
+                name = trim(m)
+                break
+            end
+        end
+        if name then
+            table.insert(rows, {
+                id = "vscprofile:create:" .. name,
+                title = "Create VS Code profile: " .. name,
+                subtitle = "pjx profiles create " .. name,
+                glyph = "plus",
+                score = 100,
+            })
+        else
+            table.insert(rows, {
+                id = "vscprofile:createprompt",
+                title = "Create VS Code profile",
+                subtitle = "type: profile create <name>",
+                glyph = "plus",
+                score = 50,
+            })
+        end
+    end
     return rows
 end
 
@@ -283,6 +313,22 @@ function onActivate(id)
         end)
         return
     end
+    if id:sub(1, 13) == "vscprofile:" then
+        local action = id:sub(14)
+        if action:sub(1, 7) == "create:" then
+            local name = action:sub(8)
+            noctalia.runAsync("pjx profiles create " .. shellQuote(name) .. " 2>&1", function(result)
+                if result.exitCode ~= 0 then
+                    noctalia.notify("projx", "Failed: " .. (result.stderr or ""))
+                else
+                    noctalia.notify("projx", "Profile created: " .. name)
+                end
+            end)
+        elseif action == "createprompt" then
+            noctalia.notify("projx", "Type: profile create <name>")
+        end
+        return
+    end
     if id:sub(1, 6) == "util:" then
         local action = id:sub(7)
         if action == "scan" then
@@ -303,6 +349,10 @@ function onActivate(id)
         elseif action == "refresh" then
             cachedProjects = nil
             noctalia.notify("projx", "Refreshed")
+        elseif action == "profiles" then
+            noctalia.runAsync("pjx profiles 2>&1", function(result)
+                noctalia.notify("projx", (result.stdout or "no profiles"):sub(1, 200))
+            end)
         elseif action:sub(1, 7) == "editor-" then
             local ed = action:sub(8)
             noctalia.runAsync("pjx config set default_editor " .. ed .. " 2>&1", function(result)
