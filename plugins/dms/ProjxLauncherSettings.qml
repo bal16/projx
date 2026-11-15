@@ -34,16 +34,16 @@ PluginSettings {
         settingKey: "trigger"
         label: "Trigger"
         description: "Launcher trigger keyword (default: pjx)"
+        placeholder: "pjx"
         defaultValue: "pjx"
     }
 
-    SpinBoxSetting {
+    StringSetting {
         settingKey: "maxResults"
         label: "Max Results"
-        description: "Maximum number of items shown"
-        defaultValue: 50
-        minValue: 5
-        maxValue: 200
+        description: "Maximum number of items shown (5-200)"
+        placeholder: "50"
+        defaultValue: "50"
     }
 
     BoolSetting {
