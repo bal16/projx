@@ -16,7 +16,7 @@ PluginComponent {
         command: ["pjx", "list", "--format=delimited"]
         running: false
         stdout: SplitParser {
-            onRead: function(data) { root.rawData += data; }
+            onRead: function(data) { root.rawData += data + "\n"; }
         }
         onExited: function(exitCode, exitStatus) {
             if (exitCode === 0) {

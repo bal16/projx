@@ -23,12 +23,14 @@ QtObject {
     // Cached data
     property var cachedProjects: []
     property string rawData: ""
+    property string rawErr: ""
     property string loadError: ""
 
     property string homeDir: Quickshell.env("HOME") || "/home"
 
     // Action process (for commands where we need output / post-run refresh)
     property string actionOut: ""
+    property string actionErr: ""
     property string pendingAction: ""
 
     signal itemsChanged
@@ -60,17 +62,22 @@ QtObject {
         command: ["pjx", "list", "--format=delimited"]
         running: false
         stdout: SplitParser {
-            onRead: function(data) { root.rawData += data; }
+            onRead: function(data) { root.rawData += data + "\n"; }
+        }
+        stderr: SplitParser {
+            onRead: function(data) { root.rawErr += data + "\n"; }
         }
         onExited: function(exitCode, exitStatus) {
             if (exitCode === 0) {
                 root.loadError = "";
                 root.cachedProjects = Logic.parseProjects(root.rawData);
             } else {
-                root.loadError = "pjx list failed (exit " + exitCode + ")";
+                var err = (root.rawErr || root.rawData || "").trim();
+                root.loadError = err !== "" ? ("pjx list failed: " + err.substring(0, 120)) : ("pjx list failed (exit " + exitCode + ")");
                 root.cachedProjects = [];
             }
             root.rawData = "";
+            root.rawErr = "";
             itemsChanged();
         }
     }
@@ -78,35 +85,45 @@ QtObject {
     property var actionProcess: Process {
         running: false
         stdout: SplitParser {
-            onRead: function(data) { root.actionOut += data; }
+            onRead: function(data) { root.actionOut += data + "\n"; }
+        }
+        stderr: SplitParser {
+            onRead: function(data) { root.actionErr += data + "\n"; }
         }
         onExited: function(exitCode, exitStatus) {
             var out = (root.actionOut || "").trim();
+            var err = (root.actionErr || "").trim();
             var action = root.pendingAction;
             root.actionOut = "";
+            root.actionErr = "";
             root.pendingAction = "";
 
             if (action === "profiles") {
-                if (out === "") out = "no profiles found";
+                if (out === "") out = err !== "" ? err : "no profiles found";
                 if (ToastService) ToastService.showInfo(out.split("\n").join(", ").substring(0, 200));
                 return;
             }
             if (action === "scan" || action === "import-zed" || action === "import-all" || action === "import-project-manager" || action === "add")
                 root.refreshCache();
-            if (exitCode !== 0 && ToastService)
-                ToastService.showInfo("pjx: command failed (exit " + exitCode + ")");
+            if (exitCode !== 0 && ToastService) {
+                var msg = err !== "" ? err : out;
+                if (msg === "") msg = "command failed (exit " + exitCode + ")";
+                ToastService.showInfo("pjx: " + msg.substring(0, 160));
+            }
         }
     }
 
     function runAction(args, pending) {
         root.pendingAction = pending || "";
         root.actionOut = "";
+        root.actionErr = "";
         actionProcess.command = args;
         actionProcess.running = true;
     }
 
     function refreshCache() {
         root.rawData = "";
+        root.rawErr = "";
         root.loadProcess.running = true;
     }
 

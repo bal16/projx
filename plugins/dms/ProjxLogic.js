@@ -145,16 +145,18 @@ function buildItems(projects, query, showProjects, maxResults, homeDir, loadErro
     }
 
     // Utility entries (searchable by title/subtitle)
+    if (loadError !== "" && items.length === 0) {
+        items.push({ name: "pjx error", comment: loadError, action: "", icon: "material:error", categories: ["projx"] });
+    }
+
     var utils = utilItems(textFilter);
     for (var u = 0; u < utils.length; u++)
         items.push(utils[u]);
 
-    if (loadError !== "" && items.length === 0) {
-        items.push({ name: "pjx error", comment: loadError, action: "", icon: "material:error", categories: ["projx"] });
-        return items;
-    }
     if (items.length === 0) {
         items.push({ name: "No projects found", comment: "run `pjx scan` to discover projects", action: "", icon: "material:folder_off", categories: ["projx"] });
+    } else if (loadError !== "") {
+        items.unshift({ name: "pjx error", comment: loadError, action: "", icon: "material:error", categories: ["projx"] });
     }
     return items;
 }
