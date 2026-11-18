@@ -1,9 +1,14 @@
 package cli
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/bal16/projx/internal/ghinfo"
+	"github.com/bal16/projx/internal/gitinfo"
 )
 
 type setParams struct {
@@ -19,6 +24,7 @@ type setParams struct {
 	editorSet  bool
 	profileSet bool
 	groupSet   bool
+	ghEnabled  *bool
 }
 
 func runSet(a *App, name string, sp setParams) error {
@@ -67,8 +73,22 @@ func runSet(a *App, name string, sp setParams) error {
 	for _, t := range sp.untag {
 		p.RemoveTag(t)
 	}
+	if sp.ghEnabled != nil {
+		p.GHEnabled = sp.ghEnabled
+	}
 	if err := a.Repo.Update(p); err != nil {
 		return err
+	}
+	// refresh git + GitHub (when enabled) on save so data is obtained
+	if gi := gitinfo.Inspect(p.Path); gi.IsRepo {
+		_ = a.Repo.UpdateGitStatus(p.ID, gi)
+	}
+	if p.GHEnabled != nil && *p.GHEnabled {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		if c, err := ghinfo.FetchOpenCounts(ctx, p.Path); err == nil {
+			_ = a.Repo.UpdateGitHubStatus(p.ID, c.OpenPRs, c.OpenIssues, c.FetchedAt)
+		}
+		cancel()
 	}
 	fmt.Printf("updated %s\n", p.Name)
 	if p.Editor != "" {
@@ -85,7 +105,7 @@ func runSet(a *App, name string, sp setParams) error {
 
 func newSetCmd() *cobra.Command {
 	var name, editor, profile, group string
-	var favorite bool
+	var favorite, ghInfo, noGHInfo bool
 	var tags []string
 	var untag []string
 
@@ -94,6 +114,15 @@ func newSetCmd() *cobra.Command {
 		Short: "Update project fields (editor, profile, name, group, favorite, tags)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var ghEnabled *bool
+			if cmd.Flags().Changed("github-info") {
+				v := true
+				ghEnabled = &v
+			}
+			if cmd.Flags().Changed("no-github-info") {
+				v := false
+				ghEnabled = &v
+			}
 			return runSet(requireApp(), args[0], setParams{
 				name:       name,
 				editor:     editor,
@@ -107,6 +136,7 @@ func newSetCmd() *cobra.Command {
 				editorSet:  cmd.Flags().Changed("editor"),
 				profileSet: cmd.Flags().Changed("profile"),
 				groupSet:   cmd.Flags().Changed("group"),
+				ghEnabled:  ghEnabled,
 			})
 		},
 	}
@@ -117,5 +147,7 @@ func newSetCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&favorite, "favorite", false, "mark as favorite (use --favorite=false to unset)")
 	cmd.Flags().StringSliceVar(&tags, "tag", nil, "add tag (repeatable)")
 	cmd.Flags().StringSliceVar(&untag, "untag", nil, "remove tag (repeatable)")
+	cmd.Flags().BoolVar(&ghInfo, "github-info", false, "fetch and cache open GitHub PR/issue counts (requires gh)")
+	cmd.Flags().BoolVar(&noGHInfo, "no-github-info", false, "disable GitHub info fetch for this project")
 	return cmd
 }

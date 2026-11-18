@@ -1,11 +1,14 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/bal16/projx/internal/ghinfo"
 	"github.com/bal16/projx/internal/gitinfo"
 )
 
@@ -27,18 +30,27 @@ func runRefresh(a *App, names []string) error {
 			continue
 		}
 		gi := gitinfo.Inspect(p.Path)
-		if !gi.IsRepo {
-			continue
+		if gi.IsRepo {
+			if err := a.Repo.UpdateGitStatus(p.ID, gi); err != nil {
+				fmt.Fprintf(os.Stderr, "update %s: %v\n", p.Name, err)
+			}
 		}
-		if err := a.Repo.UpdateGitStatus(p.ID, gi); err != nil {
-			fmt.Fprintf(os.Stderr, "update %s: %v\n", p.Name, err)
-			continue
+		if p.GHEnabled != nil && *p.GHEnabled {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			if c, err := ghinfo.FetchOpenCounts(ctx, p.Path); err == nil {
+				_ = a.Repo.UpdateGitHubStatus(p.ID, c.OpenPRs, c.OpenIssues, c.FetchedAt)
+			}
+			cancel()
 		}
-		fmt.Printf("%-24s %s", p.Name, gi.Branch)
-		if gi.Dirty > 0 {
-			fmt.Printf(" +%d", gi.Dirty)
+		if gi.IsRepo {
+			fmt.Printf("%-24s %s", p.Name, gi.Branch)
+			if gi.Dirty > 0 {
+				fmt.Printf(" +%d", gi.Dirty)
+			}
+			fmt.Println()
+		} else if p.GHEnabled != nil && *p.GHEnabled {
+			fmt.Printf("%-24s (github refreshed)\n", p.Name)
 		}
-		fmt.Println()
 	}
 	return nil
 }

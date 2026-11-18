@@ -1,24 +1,28 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/bal16/projx/internal/ghinfo"
 	"github.com/bal16/projx/internal/gitinfo"
 	"github.com/bal16/projx/internal/model"
 )
 
 type addParams struct {
-	name     string
-	editor   string
-	profile  string
-	group    string
-	tags     []string
-	favorite bool
+	name       string
+	editor     string
+	profile    string
+	group      string
+	tags       []string
+	favorite   bool
+	ghEnabled  *bool
 }
 
 func runAdd(a *App, path string, ap addParams) error {
@@ -41,13 +45,14 @@ func runAdd(a *App, path string, ap addParams) error {
 		name = filepath.Base(abs)
 	}
 	p := &model.Project{
-		Name:     name,
-		Path:     abs,
-		Editor:   ap.editor, // per-project override only; leave empty to follow default_editor
-		Profile:  ap.profile,
-		Tags:     ap.tags,
-		Group:    ap.group,
-		Favorite: ap.favorite,
+		Name:      name,
+		Path:      abs,
+		Editor:    ap.editor, // per-project override only; leave empty to follow default_editor
+		Profile:   ap.profile,
+		Tags:      ap.tags,
+		Group:     ap.group,
+		Favorite:  ap.favorite,
+		GHEnabled: ap.ghEnabled,
 	}
 	if ap.tags == nil {
 		p.Tags = []string{}
@@ -65,17 +70,33 @@ func runAdd(a *App, path string, ap addParams) error {
 	if err := a.Repo.Add(p); err != nil {
 		return err
 	}
+	if p.GHEnabled != nil && *p.GHEnabled {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		if c, err := ghinfo.FetchOpenCounts(ctx, p.Path); err == nil {
+			_ = a.Repo.UpdateGitHubStatus(p.ID, c.OpenPRs, c.OpenIssues, c.FetchedAt)
+		}
+		cancel()
+	}
 	fmt.Printf("added project %q (%s)\n", p.Name, p.ID)
 	return nil
 }
 
 func newAddCmd() *cobra.Command {
 	var ap addParams
+	var ghInfo, noGHInfo bool
 	cmd := &cobra.Command{
 		Use:   "add <path>",
 		Short: "Add a project",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flags().Changed("github-info") {
+				v := true
+				ap.ghEnabled = &v
+			}
+			if cmd.Flags().Changed("no-github-info") {
+				v := false
+				ap.ghEnabled = &v
+			}
 			return runAdd(requireApp(), args[0], ap)
 		},
 	}
@@ -85,5 +106,7 @@ func newAddCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&ap.tags, "tag", nil, "tag (repeatable)")
 	cmd.Flags().StringVar(&ap.group, "group", "", "group name (e.g. Work/Frontend)")
 	cmd.Flags().BoolVar(&ap.favorite, "favorite", false, "mark as favorite")
+	cmd.Flags().BoolVar(&ghInfo, "github-info", false, "fetch and cache open GitHub PR/issue counts (requires gh)")
+	cmd.Flags().BoolVar(&noGHInfo, "no-github-info", false, "disable GitHub info fetch for this project")
 	return cmd
 }

@@ -237,3 +237,26 @@ func TestGitBreakdownAndGHRoundTrip(t *testing.T) {
 		t.Fatalf("expected nil gh fields, got %+v", got2)
 	}
 }
+
+func TestUpdateGitHubStatus(t *testing.T) {
+	d := tempDB(t)
+	repo := NewRepository(d)
+	p := &model.Project{Name: "gh", Path: "/tmp/gh-rt", Tags: []string{}}
+	if err := repo.Add(p); err != nil {
+		t.Fatal(err)
+	}
+	fetched := time.Unix(1700001000, 0)
+	if err := repo.UpdateGitHubStatus(p.ID, 3, 7, fetched); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.Get(p.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GHOpenPRs == nil || *got.GHOpenPRs != 3 || got.GHOpenIssues == nil || *got.GHOpenIssues != 7 {
+		t.Fatalf("counts = %v %v", got.GHOpenPRs, got.GHOpenIssues)
+	}
+	if got.GHFetchedAt == nil || got.GHFetchedAt.Unix() != fetched.Unix() {
+		t.Fatalf("fetched_at = %v", got.GHFetchedAt)
+	}
+}

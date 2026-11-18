@@ -196,6 +196,13 @@ func (r *Repository) UpdateGitStatus(id string, gi gitinfo.Info) error {
 	return err
 }
 
+// UpdateGitHubStatus caches GitHub open PR/issue counts for a project.
+func (r *Repository) UpdateGitHubStatus(id string, prs, issues int, fetchedAt time.Time) error {
+	_, err := r.db.Exec(`UPDATE projects SET gh_open_prs=?, gh_open_issues=?, gh_fetched_at=?, updated_at=? WHERE id=?`,
+		prs, issues, fetchedAt.Unix(), time.Now().Unix(), id)
+	return err
+}
+
 // Settings
 func (r *Repository) GetSetting(key string) (string, error) {
 	var v string
