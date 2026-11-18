@@ -229,7 +229,12 @@ func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
 			return m, loadProjectsCmd(m.repo)
 		}
 	case "r":
+		m.lastOutput = ""
 		return m, loadProjectsCmd(m.repo)
+	case "R":
+		m.lastOutput = ""
+		m.status = "refreshing status..."
+		return m, m.runCommand("refresh")
 	case "p":
 		m.showProfiles = !m.showProfiles
 		if m.showProfiles {
@@ -241,7 +246,7 @@ func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
 			m.edit.Open(m.filtered[m.selected])
 		}
 	case "?":
-		m.lastOutput = "Normal mode keys:\n  j/k or arrows: navigate\n  gg/G: top/bottom\n  / or i: search mode\n  :: command mode\n  Enter/o: open   O: open new window\n  e: edit project   d: delete project   f: toggle favorite\n  p: toggle profiles view   r: refresh list   ?: this help\n  q: quit"
+		m.lastOutput = "Normal mode keys:\n  j/k or arrows: navigate\n  gg/G: top/bottom\n  / or i: search mode\n  :: command mode\n  Enter/o: open   O: open new window\n  e: edit project   d: delete project   f: toggle favorite\n  p: toggle profiles view   r: reload list   R: refresh status (git/GitHub)\n  ?: this help   q: quit"
 	}
 	return m, nil
 }
