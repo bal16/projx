@@ -12,6 +12,8 @@ import (
 	"github.com/bal16/projx/internal/model"
 )
 
+const projectColumns = `id,name,path,editor,profile,tags,group_name,favorite,last_opened,git_branch,git_staged,git_modified,git_untracked,git_deleted,git_renamed,git_conflicted,git_dirty,gh_enabled,gh_open_prs,gh_open_issues,gh_fetched_at,remote,created_at,updated_at`
+
 // Repository provides CRUD operations for projects and settings.
 type Repository struct {
 	db *DB
@@ -26,7 +28,7 @@ func NewRepository(db *DB) *Repository {
 
 // List returns all projects, optionally filtered by tag or group.
 func (r *Repository) List(tag, group string, favoritesOnly bool) ([]model.Project, error) {
-	q := `SELECT id,name,path,editor,profile,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at FROM projects`
+	q := `SELECT ` + projectColumns + ` FROM projects`
 	var args []any
 	var conds []string
 	if group != "" {
@@ -66,7 +68,7 @@ func (r *Repository) List(tag, group string, favoritesOnly bool) ([]model.Projec
 func (r *Repository) Get(idOrName string) (*model.Project, error) {
 	// Prefer exact id match.
 	row := r.db.QueryRow(
-		`SELECT id,name,path,editor,profile,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at
+		`SELECT `+projectColumns+`
 		 FROM projects WHERE id = ? LIMIT 1`, idOrName)
 	p, err := scanProject(row)
 	if err == nil {
@@ -74,7 +76,7 @@ func (r *Repository) Get(idOrName string) (*model.Project, error) {
 	}
 	// Fall back to name match, but detect ambiguity.
 	rows, err := r.db.Query(
-		`SELECT id,name,path,editor,profile,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at
+		`SELECT `+projectColumns+`
 		 FROM projects WHERE LOWER(name) = LOWER(?)`, idOrName)
 	if err != nil {
 		return nil, err
@@ -112,7 +114,7 @@ func (r *Repository) Get(idOrName string) (*model.Project, error) {
 // GetByPath returns a project by its path.
 func (r *Repository) GetByPath(path string) (*model.Project, error) {
 	row := r.db.QueryRow(
-		`SELECT id,name,path,editor,profile,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at
+		`SELECT `+projectColumns+`
 		 FROM projects WHERE path = ? LIMIT 1`, path)
 	p, err := scanProject(row)
 	if err != nil {
@@ -138,11 +140,13 @@ func (r *Repository) Add(p *model.Project) error {
 	}
 
 	_, err := r.db.Exec(
-		`INSERT INTO projects (id,name,path,editor,profile,tags,group_name,favorite,last_opened,git_branch,git_dirty,remote,created_at,updated_at)
-		 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		`INSERT INTO projects (id,name,path,editor,profile,tags,group_name,favorite,last_opened,git_branch,git_staged,git_modified,git_untracked,git_deleted,git_renamed,git_conflicted,git_dirty,gh_enabled,gh_open_prs,gh_open_issues,gh_fetched_at,remote,created_at,updated_at)
+		 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		p.ID, p.Name, p.Path, p.Editor, p.Profile, string(tagsJSON), p.Group,
-		boolToInt(p.Favorite), timeToUnix(p.LastOpened), p.GitBranch, p.GitDirty, p.Remote,
-		p.CreatedAt.Unix(), p.UpdatedAt.Unix(),
+		boolToInt(p.Favorite), timeToUnix(p.LastOpened), p.GitBranch,
+		p.GitStaged, p.GitModified, p.GitUntracked, p.GitDeleted, p.GitRenamed, p.GitConflicted, p.GitDirty,
+		boolPtrToNullInt(p.GHEnabled), intPtrToNullInt(p.GHOpenPRs), intPtrToNullInt(p.GHOpenIssues), timePtrToNullUnix(p.GHFetchedAt),
+		p.Remote, p.CreatedAt.Unix(), p.UpdatedAt.Unix(),
 	)
 	return err
 }
@@ -155,10 +159,12 @@ func (r *Repository) Update(p *model.Project) error {
 		tagsJSON = []byte("[]")
 	}
 	_, err := r.db.Exec(
-		`UPDATE projects SET name=?,path=?,editor=?,profile=?,tags=?,group_name=?,favorite=?,last_opened=?,git_branch=?,git_dirty=?,remote=?,updated_at=? WHERE id=?`,
+		`UPDATE projects SET name=?,path=?,editor=?,profile=?,tags=?,group_name=?,favorite=?,last_opened=?,git_branch=?,git_staged=?,git_modified=?,git_untracked=?,git_deleted=?,git_renamed=?,git_conflicted=?,git_dirty=?,gh_enabled=?,gh_open_prs=?,gh_open_issues=?,gh_fetched_at=?,remote=?,updated_at=? WHERE id=?`,
 		p.Name, p.Path, p.Editor, p.Profile, string(tagsJSON), p.Group,
-		boolToInt(p.Favorite), timeToUnix(p.LastOpened), p.GitBranch, p.GitDirty, p.Remote,
-		p.UpdatedAt.Unix(), p.ID,
+		boolToInt(p.Favorite), timeToUnix(p.LastOpened), p.GitBranch,
+		p.GitStaged, p.GitModified, p.GitUntracked, p.GitDeleted, p.GitRenamed, p.GitConflicted, p.GitDirty,
+		boolPtrToNullInt(p.GHEnabled), intPtrToNullInt(p.GHOpenPRs), intPtrToNullInt(p.GHOpenIssues), timePtrToNullUnix(p.GHFetchedAt),
+		p.Remote, p.UpdatedAt.Unix(), p.ID,
 	)
 	return err
 }
@@ -215,14 +221,28 @@ func scanProject(s scanner) (model.Project, error) {
 	var p model.Project
 	var tagsJSON string
 	var fav, lastOpened, created, updated int64
-	var gitDirty int
+	var gitStaged, gitModified, gitUntracked, gitDeleted, gitRenamed, gitConflicted, gitDirty int
+	var ghEnabled, ghOpenPRs, ghOpenIssues, ghFetchedAt sql.NullInt64
 	err := s.Scan(&p.ID, &p.Name, &p.Path, &p.Editor, &p.Profile, &tagsJSON, &p.Group,
-		&fav, &lastOpened, &p.GitBranch, &gitDirty, &p.Remote, &created, &updated)
+		&fav, &lastOpened, &p.GitBranch,
+		&gitStaged, &gitModified, &gitUntracked, &gitDeleted, &gitRenamed, &gitConflicted, &gitDirty,
+		&ghEnabled, &ghOpenPRs, &ghOpenIssues, &ghFetchedAt,
+		&p.Remote, &created, &updated)
 	if err != nil {
 		return p, err
 	}
 	p.Favorite = fav == 1
+	p.GitStaged = gitStaged
+	p.GitModified = gitModified
+	p.GitUntracked = gitUntracked
+	p.GitDeleted = gitDeleted
+	p.GitRenamed = gitRenamed
+	p.GitConflicted = gitConflicted
 	p.GitDirty = gitDirty
+	p.GHEnabled = nullIntToBoolPtr(ghEnabled)
+	p.GHOpenPRs = nullIntToIntPtr(ghOpenPRs)
+	p.GHOpenIssues = nullIntToIntPtr(ghOpenIssues)
+	p.GHFetchedAt = nullIntToTimePtr(ghFetchedAt)
 	p.LastOpened = unixToTime(lastOpened)
 	p.CreatedAt = unixToTime(created)
 	p.UpdatedAt = unixToTime(updated)
@@ -246,6 +266,54 @@ func boolToInt(b bool) int {
 		return 1
 	}
 	return 0
+}
+
+func boolPtrToNullInt(b *bool) any {
+	if b == nil {
+		return nil
+	}
+	if *b {
+		return 1
+	}
+	return 0
+}
+
+func intPtrToNullInt(v *int) any {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+
+func timePtrToNullUnix(t *time.Time) any {
+	if t == nil || t.IsZero() {
+		return nil
+	}
+	return t.Unix()
+}
+
+func nullIntToBoolPtr(v sql.NullInt64) *bool {
+	if !v.Valid {
+		return nil
+	}
+	b := v.Int64 != 0
+	return &b
+}
+
+func nullIntToIntPtr(v sql.NullInt64) *int {
+	if !v.Valid {
+		return nil
+	}
+	i := int(v.Int64)
+	return &i
+}
+
+func nullIntToTimePtr(v sql.NullInt64) *time.Time {
+	if !v.Valid || v.Int64 == 0 {
+		return nil
+	}
+	t := time.Unix(v.Int64, 0)
+	return &t
 }
 
 func timeToUnix(t time.Time) int64 {

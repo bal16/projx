@@ -2,24 +2,34 @@ package db
 
 import "fmt"
 
-const schemaVersion = 2
+const schemaVersion = 3
 
 const createSchema = `
 CREATE TABLE IF NOT EXISTS projects (
-    id          TEXT PRIMARY KEY,
-    name        TEXT NOT NULL,
-    path        TEXT NOT NULL UNIQUE,
-    editor      TEXT NOT NULL DEFAULT '',
-    profile     TEXT NOT NULL DEFAULT '',
-    tags        TEXT NOT NULL DEFAULT '[]',
-    group_name  TEXT NOT NULL DEFAULT '',
-    favorite    INTEGER NOT NULL DEFAULT 0,
-    last_opened INTEGER NOT NULL DEFAULT 0,
-    git_branch  TEXT NOT NULL DEFAULT '',
-    git_dirty   INTEGER NOT NULL DEFAULT 0,
-    remote      TEXT NOT NULL DEFAULT '',
-    created_at  INTEGER NOT NULL,
-    updated_at  INTEGER NOT NULL
+    id             TEXT PRIMARY KEY,
+    name           TEXT NOT NULL,
+    path           TEXT NOT NULL UNIQUE,
+    editor         TEXT NOT NULL DEFAULT '',
+    profile        TEXT NOT NULL DEFAULT '',
+    tags           TEXT NOT NULL DEFAULT '[]',
+    group_name     TEXT NOT NULL DEFAULT '',
+    favorite       INTEGER NOT NULL DEFAULT 0,
+    last_opened    INTEGER NOT NULL DEFAULT 0,
+    git_branch     TEXT NOT NULL DEFAULT '',
+    git_staged     INTEGER NOT NULL DEFAULT 0,
+    git_modified   INTEGER NOT NULL DEFAULT 0,
+    git_untracked  INTEGER NOT NULL DEFAULT 0,
+    git_deleted    INTEGER NOT NULL DEFAULT 0,
+    git_renamed    INTEGER NOT NULL DEFAULT 0,
+    git_conflicted INTEGER NOT NULL DEFAULT 0,
+    git_dirty      INTEGER NOT NULL DEFAULT 0,
+    gh_enabled     INTEGER NULL,
+    gh_open_prs    INTEGER NULL,
+    gh_open_issues INTEGER NULL,
+    gh_fetched_at  INTEGER NULL,
+    remote         TEXT NOT NULL DEFAULT '',
+    created_at     INTEGER NOT NULL,
+    updated_at     INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -52,6 +62,22 @@ func (d *DB) migrate() error {
 	if v < 2 {
 		// Add profile column if missing (idempotent; ignore "duplicate column" errors).
 		_, _ = d.Exec("ALTER TABLE projects ADD COLUMN profile TEXT NOT NULL DEFAULT ''")
+	}
+	if v < 3 {
+		for _, stmt := range []string{
+			"ALTER TABLE projects ADD COLUMN git_staged INTEGER NOT NULL DEFAULT 0",
+			"ALTER TABLE projects ADD COLUMN git_modified INTEGER NOT NULL DEFAULT 0",
+			"ALTER TABLE projects ADD COLUMN git_untracked INTEGER NOT NULL DEFAULT 0",
+			"ALTER TABLE projects ADD COLUMN git_deleted INTEGER NOT NULL DEFAULT 0",
+			"ALTER TABLE projects ADD COLUMN git_renamed INTEGER NOT NULL DEFAULT 0",
+			"ALTER TABLE projects ADD COLUMN git_conflicted INTEGER NOT NULL DEFAULT 0",
+			"ALTER TABLE projects ADD COLUMN gh_enabled INTEGER NULL",
+			"ALTER TABLE projects ADD COLUMN gh_open_prs INTEGER NULL",
+			"ALTER TABLE projects ADD COLUMN gh_open_issues INTEGER NULL",
+			"ALTER TABLE projects ADD COLUMN gh_fetched_at INTEGER NULL",
+		} {
+			_, _ = d.Exec(stmt)
+		}
 	}
 	if v == 0 {
 		if _, err := d.Exec("INSERT INTO schema_version (version) VALUES (?)", schemaVersion); err != nil {
