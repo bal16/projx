@@ -4,7 +4,7 @@
 
 ```sh
 pjx scan [roots...] [--max-depth N] [--dry-run]   # auto-discover projects
-pjx add <path> [--name N] [--editor E] [--tag T] [--group G] [--favorite]
+pjx add <path> [--name N] [--editor E] [--profile P] [--tag T] [--group G] [--favorite] [--github-info|--no-github-info]
 pjx list [--tag T] [--group G] [--favorites] [--sort recent|name|path] [--refresh] [--json|--format=text|json|delimited]
 pjx open <project> [--editor E] [--profile P] [--new-window] [--add]
 pjx open --set <name> [--new-window]              # open a workspace set
@@ -13,8 +13,8 @@ pjx rename <project> <new-name>
 pjx favorite <project>                            # toggle favorite
 pjx tag <project> [+tag|-tag ...]
 pjx group <project> <group-name>
-pjx set <project> [--name N] [--editor E] [--profile P] [--group G] [--favorite[=bool]] [--tag T] [--untag T]
-pjx refresh [project]                             # refresh cached git status
+pjx set <project> [--name N] [--editor E] [--profile P] [--group G] [--favorite[=bool]] [--tag T] [--untag T] [--github-info|--no-github-info]
+pjx refresh [project]                             # refresh cached git status (and GitHub PR/issue counts when enabled)
 pjx doctor [--prune]                              # check/prune missing paths
 pjx profiles [list [--json]]                      # list VS Code profiles
 pjx profiles create <name>                    # create a new VS Code profile
@@ -130,22 +130,25 @@ pjx ws delete myset
 
 - `/` or `i` search · `j`/`k` or arrows navigate · `gg`/`G` top/bottom
 - `Enter` or `o` open · `O` open in new window
-- `e` edit project (name, editor, profile, tags, group)
+- `e` edit project (name, editor, profile, tags, group, GitHub info)
 - `f` toggle favorite · `d` remove project
-- `p` toggle VS Code profiles view · `r` refresh list
+- `p` toggle VS Code profiles view · `r` reload list · `R` refresh status (git & GitHub) for all projects
 - `:` command mode · `?` help · `q` quit
+
+The preview shows the project path, live modified time, cached git branch with a full status breakdown (staged/modified/untracked/deleted/renamed/conflicted), and cached open PR/issue counts for GitHub remotes when enabled for that project (fetched via `gh` on add/edit/refresh). GitHub info is optional per project (`--github-info` / `--no-github-info`, or toggle in the edit form) and left unchanged if it cannot be fetched.
 
 **Search mode** (`/` or `i`): type to filter projects
 
 - `Enter` open · `Ctrl+O` open in new window
-- `↑`/`↓` or `Ctrl+P`/`Ctrl+N` navigate · `Ctrl+R` refresh · `Esc` back to normal
+- `↑`/`↓` or `Ctrl+P`/`Ctrl+N` navigate · `Ctrl+R` reload · `Esc` back to normal
 
-**Command mode** (`:`): run `pjx` subcommands (e.g. `scan`, `import --all`, `config get terminal`, `doctor`)
+**Command mode** (`:`): run `pjx` subcommands (e.g. `scan`, `import --all`, `config get terminal`, `doctor`, `refresh`)
 
 - type to filter commands, `Tab`/`Shift+Tab` autocomplete · `Enter` run · `Esc` cancel
 - command output is shown in the preview pane
 
 **Edit mode** (`e`):
 
-- `Tab`/`↓` next field · `Shift+Tab`/`↑` previous field · `Enter` save · `Esc` cancel
+- `Tab`/`↓` next field · `Shift+Tab`/`↑` previous field · `Space`/`←`/`→` cycle GitHub field (`unset`/`on`/`off`) · `Enter` save · `Esc` cancel
+- Saving refreshes cached git status (and GitHub info when enabled) for the project.
 - Editor: empty = follow `default_editor`. Tags: comma-separated. Profile: VS Code profile name.

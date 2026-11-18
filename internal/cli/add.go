@@ -16,13 +16,13 @@ import (
 )
 
 type addParams struct {
-	name       string
-	editor     string
-	profile    string
-	group      string
-	tags       []string
-	favorite   bool
-	ghEnabled  *bool
+	name      string
+	editor    string
+	profile   string
+	group     string
+	tags      []string
+	favorite  bool
+	ghEnabled *bool
 }
 
 func runAdd(a *App, path string, ap addParams) error {

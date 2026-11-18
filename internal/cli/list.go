@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/bal16/projx/internal/gitinfo"
+	"github.com/bal16/projx/internal/model"
 )
 
 func newListCmd() *cobra.Command {
@@ -82,7 +84,9 @@ func newListCmd() *cobra.Command {
 				return enc.Encode(projects)
 			case "delimited":
 				// Unit separator (\x1f) between fields, newline between records.
-				// Fields: id, name, path, editor, tags, group, favorite, git_branch, git_dirty, remote
+				// Fields (0-9 stable): id, name, path, editor, tags, group, favorite, git_branch, git_dirty, remote
+				// Appended: git_staged, git_modified, git_untracked, git_deleted, git_renamed, git_conflicted,
+				//           gh_enabled, gh_open_prs, gh_open_issues, gh_fetched_at(unix)
 				sep := "\x1f"
 				for _, p := range projects {
 					tags := joinStrings(p.Tags, ",")
@@ -90,9 +94,30 @@ func newListCmd() *cobra.Command {
 					if p.Favorite {
 						fav = "1"
 					}
+					ghEnabled := ""
+					if p.GHEnabled != nil {
+						if *p.GHEnabled {
+							ghEnabled = "1"
+						} else {
+							ghEnabled = "0"
+						}
+					}
+					ghPRs, ghIssues, ghFetched := "", "", ""
+					if p.GHOpenPRs != nil {
+						ghPRs = fmt.Sprintf("%d", *p.GHOpenPRs)
+					}
+					if p.GHOpenIssues != nil {
+						ghIssues = fmt.Sprintf("%d", *p.GHOpenIssues)
+					}
+					if p.GHFetchedAt != nil {
+						ghFetched = fmt.Sprintf("%d", p.GHFetchedAt.Unix())
+					}
 					fields := []string{
 						p.ID, p.Name, p.Path, p.Editor, tags, p.Group, fav,
 						p.GitBranch, fmt.Sprintf("%d", p.GitDirty), p.Remote,
+						fmt.Sprintf("%d", p.GitStaged), fmt.Sprintf("%d", p.GitModified), fmt.Sprintf("%d", p.GitUntracked),
+						fmt.Sprintf("%d", p.GitDeleted), fmt.Sprintf("%d", p.GitRenamed), fmt.Sprintf("%d", p.GitConflicted),
+						ghEnabled, ghPRs, ghIssues, ghFetched,
 					}
 					fmt.Println(joinStrings(fields, sep))
 				}
@@ -109,17 +134,21 @@ func newListCmd() *cobra.Command {
 					}
 					git := ""
 					if p.GitBranch != "" {
-						git = fmt.Sprintf("  [%s", p.GitBranch)
-						if p.GitDirty > 0 {
-							git += fmt.Sprintf(" +%d", p.GitDirty)
+						git = "  [" + p.GitBranch
+						if detail := compactGitDetail(p); detail != "" {
+							git += " " + detail
 						}
 						git += "]"
+					}
+					gh := ""
+					if p.GHEnabled != nil && *p.GHEnabled && p.GHOpenPRs != nil && p.GHOpenIssues != nil {
+						gh = fmt.Sprintf("  PR:%d I:%d", *p.GHOpenPRs, *p.GHOpenIssues)
 					}
 					tags := ""
 					if len(p.Tags) > 0 {
 						tags = "  tags=" + joinStrings(p.Tags, ",")
 					}
-					fmt.Printf("%s %-24s %s%s%s\n", marker, p.Name, p.Path, git, tags)
+					fmt.Printf("%s %-24s %s%s%s%s\n", marker, p.Name, p.Path, git, gh, tags)
 				}
 				return nil
 			}
@@ -133,6 +162,29 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&refresh, "refresh", false, "refresh cached git status before listing")
 	cmd.Flags().StringVar(&format, "format", "text", "output format: text|json|delimited")
 	return cmd
+}
+
+func compactGitDetail(p model.Project) string {
+	var parts []string
+	if p.GitStaged > 0 {
+		parts = append(parts, fmt.Sprintf("S:%d", p.GitStaged))
+	}
+	if p.GitModified > 0 {
+		parts = append(parts, fmt.Sprintf("M:%d", p.GitModified))
+	}
+	if p.GitUntracked > 0 {
+		parts = append(parts, fmt.Sprintf("?:%d", p.GitUntracked))
+	}
+	if p.GitDeleted > 0 {
+		parts = append(parts, fmt.Sprintf("D:%d", p.GitDeleted))
+	}
+	if p.GitRenamed > 0 {
+		parts = append(parts, fmt.Sprintf("R:%d", p.GitRenamed))
+	}
+	if p.GitConflicted > 0 {
+		parts = append(parts, fmt.Sprintf("U:%d", p.GitConflicted))
+	}
+	return strings.Join(parts, " ")
 }
 
 func joinStrings(ss []string, sep string) string {

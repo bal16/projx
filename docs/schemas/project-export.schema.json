@@ -58,10 +58,59 @@
           "type": "string",
           "description": "Cached current git branch name."
         },
+        "git_staged": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cached count of staged git changes."
+        },
+        "git_modified": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cached count of unstaged modified git files."
+        },
+        "git_untracked": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cached count of untracked git files."
+        },
+        "git_deleted": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cached count of unstaged deleted git files."
+        },
+        "git_renamed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cached count of renamed/copied git files."
+        },
+        "git_conflicted": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cached count of conflicted/unmerged git files."
+        },
         "git_dirty": {
           "type": "integer",
           "minimum": 0,
-          "description": "Cached count of dirty (changed) git files."
+          "description": "Cached total count of git changes (sum of breakdown buckets)."
+        },
+        "gh_enabled": {
+          "type": ["boolean", "null"],
+          "description": "Per-project GitHub info fetch opt-in (true enabled, false disabled, null/omitted unset)."
+        },
+        "gh_open_prs": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Cached open pull request count for the GitHub remote, when fetched."
+        },
+        "gh_open_issues": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Cached open issue count for the GitHub remote, when fetched."
+        },
+        "gh_fetched_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Timestamp of last successful GitHub info fetch (RFC 3339)."
         },
         "created_at": {
           "type": "string",
