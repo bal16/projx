@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/bal16/projx/internal/model"
 	"github.com/bal16/projx/internal/util"
 )
 
@@ -51,14 +52,7 @@ func (m Model) View() string {
 		if name == "" {
 			name = util.BaseName(p.Path)
 		}
-		git := ""
-		if p.GitBranch != "" {
-			git = " [" + p.GitBranch
-			if p.GitDirty > 0 {
-				git += " +" + fmt.Sprintf("%d", p.GitDirty)
-			}
-			git += "]"
-		}
+		git := formatGitList(p)
 		ptr := "  "
 		if i == m.selected {
 			ptr = "> "
@@ -104,12 +98,16 @@ func (m Model) View() string {
 		if p.Group != "" {
 			previewLines = append(previewLines, "Group:  "+p.Group)
 		}
-		if p.GitBranch != "" {
-			previewLines = append(previewLines, "Git:    "+p.GitBranch+fmt.Sprintf(" (%d dirty)", p.GitDirty))
+		if line := formatGitPreview(p); line != "" {
+			previewLines = append(previewLines, "Git:    "+line)
+		}
+		if line, ok := formatGitHub(p); ok {
+			previewLines = append(previewLines, line)
 		}
 		if p.Remote != "" {
 			previewLines = append(previewLines, "Remote: "+p.Remote)
 		}
+		previewLines = append(previewLines, "Modified: "+formatModified(p.Path))
 		if !p.LastOpened.IsZero() {
 			previewLines = append(previewLines, "Opened: "+p.LastOpened.Format("2006-01-02 15:04"))
 		}
@@ -147,12 +145,76 @@ func (m Model) View() string {
 	case "search":
 		b.WriteString(dimStyle.Render("type to filter | Esc: normal mode | Enter: open | Ctrl+O: new window"))
 	case "normal":
-		b.WriteString(dimStyle.Render("j/k: nav  gg/G: top/bottom  /: search  :: cmd  Enter/o: open  O: new win  e: edit  d: del  f: fav  r: refresh  ?: help  q: quit"))
+		b.WriteString(dimStyle.Render("j/k: nav  gg/G: top/bottom  /: search  :: cmd  Enter/o: open  O: new win  e: edit  d: del  f: fav  r: reload  R: refresh status  ?: help  q: quit"))
 	case "command":
 		b.WriteString(dimStyle.Render("Tab: complete  Enter: run  Esc: cancel"))
 	}
 
 	return b.String()
+}
+
+func formatGitList(p model.Project) string {
+	if p.GitBranch == "" {
+		return ""
+	}
+	parts := gitNonZeroParts(p)
+	if len(parts) == 0 {
+		return " [" + p.GitBranch + "]"
+	}
+	return " [" + p.GitBranch + " " + strings.Join(parts, " ") + "]"
+}
+
+func formatGitPreview(p model.Project) string {
+	if p.GitBranch == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s  S:%d M:%d ?:%d D:%d R:%d U:%d",
+		p.GitBranch, p.GitStaged, p.GitModified, p.GitUntracked, p.GitDeleted, p.GitRenamed, p.GitConflicted)
+}
+
+func gitNonZeroParts(p model.Project) []string {
+	var parts []string
+	if p.GitStaged > 0 {
+		parts = append(parts, fmt.Sprintf("S:%d", p.GitStaged))
+	}
+	if p.GitModified > 0 {
+		parts = append(parts, fmt.Sprintf("M:%d", p.GitModified))
+	}
+	if p.GitUntracked > 0 {
+		parts = append(parts, fmt.Sprintf("?:%d", p.GitUntracked))
+	}
+	if p.GitDeleted > 0 {
+		parts = append(parts, fmt.Sprintf("D:%d", p.GitDeleted))
+	}
+	if p.GitRenamed > 0 {
+		parts = append(parts, fmt.Sprintf("R:%d", p.GitRenamed))
+	}
+	if p.GitConflicted > 0 {
+		parts = append(parts, fmt.Sprintf("U:%d", p.GitConflicted))
+	}
+	return parts
+}
+
+func formatModified(path string) string {
+	info, err := os.Stat(path)
+	if err != nil {
+		return "-"
+	}
+	return info.ModTime().Format("2006-01-02 15:04")
+}
+
+func formatGitHub(p model.Project) (string, bool) {
+	if p.GHEnabled == nil || !*p.GHEnabled {
+		return "", false
+	}
+	if p.GHOpenPRs == nil || p.GHOpenIssues == nil {
+		return "PR:     -  Issues: -", true
+	}
+	line := fmt.Sprintf("PR:     %d  Issues: %d", *p.GHOpenPRs, *p.GHOpenIssues)
+	if p.GHFetchedAt != nil {
+		line += "  (" + p.GHFetchedAt.Format("2006-01-02 15:04") + ")"
+	}
+	return line, true
 }
 
 func (m Model) homeDir() string {

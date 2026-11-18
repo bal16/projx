@@ -122,3 +122,55 @@ func TestEditProjectFlow(t *testing.T) {
 		t.Errorf("esc saved editor: %q, want code", got.Editor)
 	}
 }
+
+func TestViewShowsProjectStatusInfo(t *testing.T) {
+	lipgloss.SetColorProfile(termenv.ANSI256)
+	enabled := true
+	prs, issues := 2, 5
+	dir := t.TempDir()
+	m := Model{
+		projects: []model.Project{
+			{
+				Name: "web", Path: dir, GitBranch: "feat/auth",
+				GitStaged: 1, GitModified: 3, GitUntracked: 2, GitDeleted: 0, GitRenamed: 0, GitConflicted: 0, GitDirty: 6,
+				GHEnabled: &enabled, GHOpenPRs: &prs, GHOpenIssues: &issues,
+			},
+		},
+		width: 120, height: 24, mode: "normal",
+	}
+	m.filtered = m.projects
+	m.selected = 0
+	out := m.View()
+	if !strings.Contains(out, "feat/auth") || !strings.Contains(out, "M:3") || !strings.Contains(out, "?:2") || !strings.Contains(out, "S:1") {
+		t.Fatalf("git breakdown missing in view: %q", out)
+	}
+	if !strings.Contains(out, "Modified:") {
+		t.Fatalf("modified time missing in view: %q", out)
+	}
+	if !strings.Contains(out, "PR:") || !strings.Contains(out, "2") || !strings.Contains(out, "Issues:") || !strings.Contains(out, "5") {
+		t.Fatalf("PR/issues missing in view: %q", out)
+	}
+}
+
+func TestViewGitHubPlaceholderAndDisabled(t *testing.T) {
+	enabled := true
+	dir := t.TempDir()
+	m := Model{
+		projects: []model.Project{
+			{Name: "a", Path: dir, GitBranch: "main", GHEnabled: &enabled},
+			{Name: "b", Path: dir, GitBranch: "main"},
+		},
+		width: 120, height: 24, mode: "normal",
+	}
+	m.filtered = m.projects
+	m.selected = 0
+	out := m.View()
+	if !strings.Contains(out, "PR:") || !strings.Contains(out, "-") || !strings.Contains(out, "Issues:") {
+		t.Fatalf("expected PR/issues placeholder: %q", out)
+	}
+	m.selected = 1
+	out = m.View()
+	if strings.Contains(out, "PR:") || strings.Contains(out, "Issues:") {
+		t.Fatalf("did not expect PR/issues for disabled project: %q", out)
+	}
+}
