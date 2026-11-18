@@ -95,6 +95,10 @@ Extend `gitinfo.Info` and parsing from `git status --porcelain` (v1) per line XY
   - `R` (new): **refresh status for all projects** — run git (and GitHub where enabled) refresh for all projects, then reload list (with progress/status message, non-blocking via command where appropriate). This satisfies “trigger refresh status semua project”.
   - `:` command `refresh [project]` continues to invoke CLI refresh; palette already suggests `refresh`.
 - **Help/status bar:** update hints to include `R: refresh status` (all).
+- **Responsive/breakpoints (explicit):**
+  - **Two-column** when `width >= 60` and preview has room (current logic): list width ~2/3, min ~38 cols for preview, **capped at 90 cols** so very wide terminals give space to preview. Preview values are truncated to panel width; git/PR/Modified use compact forms (prefer non-zero counts, e.g. `M:3 ?:2`) to fit.
+  - **Narrow/single-column** (`width < 60` or insufficient preview room): keep the current list-first rendering; the list row shows a compact git summary so key status remains visible. Full preview is available in two-column widths (no new toggle in this change; call made for scope).
+  - **Small height**: content lines = `maxLines` (min 5); prioritize key preview fields first (Name/Path, Git, Modified, PR/Issues) so they remain visible when space is tight.
 
 ### CLI changes
 - `pjx refresh [project...]` (no args = all): for each target, update git breakdown; if `gh_enabled` true, attempt GitHub fetch and store counts/fetched_at. Report per project as today (extend output to reflect breakdown succinctly if desired).
@@ -123,4 +127,4 @@ Extend `gitinfo.Info` and parsing from `git status --porcelain` (v1) per line XY
 
 ## Approval
 
-This document requires explicit approval before implementation. After approval: write an implementation plan (superpowers:writing-plans) and then implement.
+Approved by user (“okey implementasi”, 2026-11-18) with breakpoint handling as specified above (narrow: list-first with compact git summary; full preview in two-column). Next: write implementation plan, then implement.
