@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/bal16/projx/internal/gitinfo"
 	"github.com/bal16/projx/internal/model"
 )
 
@@ -188,10 +189,10 @@ func (r *Repository) TouchLastOpened(id string) error {
 	return err
 }
 
-// UpdateGitStatus caches git branch and dirty count.
-func (r *Repository) UpdateGitStatus(id, branch string, dirty int) error {
-	_, err := r.db.Exec("UPDATE projects SET git_branch=?, git_dirty=?, updated_at=? WHERE id=?",
-		branch, dirty, time.Now().Unix(), id)
+// UpdateGitStatus caches git status breakdown for a project.
+func (r *Repository) UpdateGitStatus(id string, gi gitinfo.Info) error {
+	_, err := r.db.Exec(`UPDATE projects SET git_branch=?, git_staged=?, git_modified=?, git_untracked=?, git_deleted=?, git_renamed=?, git_conflicted=?, git_dirty=?, updated_at=? WHERE id=?`,
+		gi.Branch, gi.Staged, gi.Modified, gi.Untracked, gi.Deleted, gi.Renamed, gi.Conflicted, gi.Dirty, time.Now().Unix(), id)
 	return err
 }
 

@@ -50,6 +50,12 @@ func runScan(a *App, roots []string, sp scanParams) error {
 		}
 		if gi := gitinfo.Inspect(f.Path); gi.IsRepo {
 			p.GitBranch = gi.Branch
+			p.GitStaged = gi.Staged
+			p.GitModified = gi.Modified
+			p.GitUntracked = gi.Untracked
+			p.GitDeleted = gi.Deleted
+			p.GitRenamed = gi.Renamed
+			p.GitConflicted = gi.Conflicted
 			p.GitDirty = gi.Dirty
 		}
 		if sp.dryRun {

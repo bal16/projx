@@ -30,7 +30,7 @@ func runRefresh(a *App, names []string) error {
 		if !gi.IsRepo {
 			continue
 		}
-		if err := a.Repo.UpdateGitStatus(p.ID, gi.Branch, gi.Dirty); err != nil {
+		if err := a.Repo.UpdateGitStatus(p.ID, gi); err != nil {
 			fmt.Fprintf(os.Stderr, "update %s: %v\n", p.Name, err)
 			continue
 		}

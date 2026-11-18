@@ -8,9 +8,15 @@ import (
 
 // Info holds git metadata for a directory.
 type Info struct {
-	Branch string
-	Dirty  int // number of changed files
-	IsRepo bool
+	Branch     string
+	Staged     int
+	Modified   int
+	Untracked  int
+	Deleted    int
+	Renamed    int
+	Conflicted int
+	Dirty      int // total number of changes (sum of breakdown buckets)
+	IsRepo     bool
 }
 
 // Inspect returns git info for the given directory.
@@ -34,17 +40,46 @@ func Inspect(dir string) Info {
 	info.Branch = branch
 	info.IsRepo = true
 
-	// dirty count
+	// status breakdown
 	out3, err3 := exec.Command("git", "-C", dir, "status", "--porcelain").Output()
 	if err3 == nil {
-		lines := strings.Split(strings.TrimSpace(string(out3)), "\n")
-		if len(lines) == 1 && lines[0] == "" {
-			info.Dirty = 0
-		} else {
-			info.Dirty = len(lines)
-		}
+		parsePorcelain(&info, string(out3))
 	}
 	return info
+}
+
+func parsePorcelain(info *Info, out string) {
+	out = strings.TrimRight(out, "\n")
+	if strings.TrimSpace(out) == "" {
+		return
+	}
+	for _, line := range strings.Split(out, "\n") {
+		if len(line) < 2 {
+			continue
+		}
+		x, y := line[0], line[1]
+		switch {
+		case x == '?' && y == '?':
+			info.Untracked++
+			continue
+		case x == 'U' || y == 'U' || (x == 'A' && y == 'A') || (x == 'D' && y == 'D'):
+			info.Conflicted++
+			continue
+		}
+		switch x {
+		case 'R', 'C':
+			info.Renamed++
+		case 'M', 'A', 'D':
+			info.Staged++
+		}
+		switch y {
+		case 'M':
+			info.Modified++
+		case 'D':
+			info.Deleted++
+		}
+	}
+	info.Dirty = info.Staged + info.Modified + info.Untracked + info.Deleted + info.Renamed + info.Conflicted
 }
 
 // IsGitRepo reports whether dir is inside a git repository.

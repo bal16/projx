@@ -29,8 +29,14 @@ func newListCmd() *cobra.Command {
 				for i := range projects {
 					gi := gitinfo.Inspect(projects[i].Path)
 					if gi.IsRepo {
-						_ = a.Repo.UpdateGitStatus(projects[i].ID, gi.Branch, gi.Dirty)
+						_ = a.Repo.UpdateGitStatus(projects[i].ID, gi)
 						projects[i].GitBranch = gi.Branch
+						projects[i].GitStaged = gi.Staged
+						projects[i].GitModified = gi.Modified
+						projects[i].GitUntracked = gi.Untracked
+						projects[i].GitDeleted = gi.Deleted
+						projects[i].GitRenamed = gi.Renamed
+						projects[i].GitConflicted = gi.Conflicted
 						projects[i].GitDirty = gi.Dirty
 					}
 				}
