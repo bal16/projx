@@ -310,3 +310,69 @@ func TestViewScrollsWhenSelectedIsOffscreen(t *testing.T) {
 		t.Fatalf("expected proj-00 to be visible at top after gg: %q", outTop)
 	}
 }
+
+func TestQuickChooseEditorFlow(t *testing.T) {
+	t.Setenv("PROJX_DATA_DIR", t.TempDir())
+	d, err := db.Open()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = d.Close() }()
+	repo := db.NewRepository(d)
+	p := &model.Project{Name: "demo", Path: "/path/demo"}
+	if err := repo.Add(p); err != nil {
+		t.Fatal(err)
+	}
+
+	m := New(repo)
+	m.projects = []model.Project{*p}
+	m.filtered = []model.Project{*p}
+	m.width = 80
+	m.height = 24
+	m.mode = "normal"
+	m.selected = 0
+
+	// Press E in normal mode
+	up, _ := m.handleNormalMode("E")
+	m = up.(Model)
+	if m.mode != "open_editor" {
+		t.Fatalf("expected mode open_editor, got %q", m.mode)
+	}
+
+	// Press Tab to cycle completion
+	up, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = up.(Model)
+	if m.input.Value() != "zed" {
+		t.Fatalf("expected completion 'zed', got %q", m.input.Value())
+	}
+
+	// Press Tab again
+	up, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = up.(Model)
+	if m.input.Value() != "code" {
+		t.Fatalf("expected completion 'code', got %q", m.input.Value())
+	}
+
+	// Esc cancels
+	up, _ = m.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	m = up.(Model)
+	if m.mode != "normal" || m.Opened() {
+		t.Fatalf("expected canceled to normal mode, got mode=%q opened=%v", m.mode, m.Opened())
+	}
+
+	// Press E again, type custom editor, and Enter
+	up, _ = m.handleNormalMode("E")
+	m = up.(Model)
+	m.input.SetValue("nvim")
+	up, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = up.(Model)
+	if !m.Opened() {
+		t.Fatal("expected Opened() to be true")
+	}
+	if m.OpenPath() != "/path/demo" {
+		t.Fatalf("unexpected open path: %q", m.OpenPath())
+	}
+	if m.OpenEditor() != "nvim" {
+		t.Fatalf("expected open editor 'nvim', got %q", m.OpenEditor())
+	}
+}

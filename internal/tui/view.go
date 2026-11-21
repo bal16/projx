@@ -28,7 +28,7 @@ func (m Model) View() string {
 	var b strings.Builder
 	modeLabel := m.mode
 	b.WriteString(headerStyle.Render("projx") + "  " + dimStyle.Render("["+modeLabel+"] "+m.status) + "\n")
-	if m.mode == "search" || m.mode == "command" {
+	if m.mode == "search" || m.mode == "command" || m.mode == "open_editor" {
 		b.WriteString(m.input.View() + "\n")
 	}
 	b.WriteString(strings.Repeat("-", m.width) + "\n")
@@ -158,9 +158,11 @@ func (m Model) View() string {
 	case "search":
 		b.WriteString(dimStyle.Render("type to filter | Esc: normal mode | Enter: open | Ctrl+O: new window"))
 	case "normal":
-		b.WriteString(dimStyle.Render("j/k: nav  gg/G: top/bottom  /: search  :: cmd  Enter/o: open  O: new win  e: edit  d: del  f: fav  r: reload  R: refresh status  ?: help  q: quit"))
+		b.WriteString(dimStyle.Render("j/k: nav  gg/G: top/bottom  /: search  :: cmd  Enter/o: open  O: new win  E: editor  e: edit  d: del  f: fav  r: reload  R: refresh status  ?: help  q: quit"))
 	case "command":
 		b.WriteString(dimStyle.Render("Tab: complete  Enter: run  Esc: cancel"))
+	case "open_editor":
+		b.WriteString(dimStyle.Render("type editor name (Tab: cycle) | Enter: open | Esc: cancel"))
 	}
 
 	return b.String()

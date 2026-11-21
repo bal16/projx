@@ -93,6 +93,38 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, c
 		}
 
+		// Open Editor mode: choose editor override
+		if m.mode == "open_editor" {
+			switch key {
+			case "ctrl+c":
+				m.quitting = true
+				return m, tea.Quit
+			case "esc":
+				m.mode = "normal"
+				m.input.SetValue("")
+				m.input.Blur()
+				return m, nil
+			case "enter":
+				if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+					p := m.filtered[m.selected]
+					m.opened = true
+					m.openPath = p.Path
+					m.openNew = false
+					m.openEditor = strings.TrimSpace(m.input.Value())
+					_ = m.repo.TouchLastOpened(p.ID)
+					return m, tea.Quit
+				}
+			case "tab":
+				m.cycleEditorCompletion()
+				return m, nil
+			default:
+				var c tea.Cmd
+				m.input, c = m.input.Update(msg)
+				return m, c
+			}
+			return m, nil
+		}
+
 		// Search mode (fuzzy): typing filters
 		if m.mode == "search" {
 			switch key {
@@ -237,6 +269,15 @@ func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
 			_ = m.repo.TouchLastOpened(p.ID)
 			return m, tea.Quit
 		}
+	case "E":
+		if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+			m.mode = "open_editor"
+			m.input.SetValue("")
+			m.input.Focus()
+			m.input.Placeholder = "open with editor (e.g. zed, code, nvim)..."
+			m.lastOutput = ""
+			m.showProfiles = false
+		}
 	case "d":
 		if len(m.filtered) > 0 && m.selected < len(m.filtered) {
 			p := m.filtered[m.selected]
@@ -268,7 +309,7 @@ func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
 			m.edit.Open(m.filtered[m.selected])
 		}
 	case "?":
-		m.lastOutput = "Normal mode keys:\n  j/k or arrows: navigate\n  gg/G: top/bottom\n  / or i: search mode\n  :: command mode\n  Enter/o: open   O: open new window\n  e: edit project   d: delete project   f: toggle favorite\n  p: toggle profiles view   r: reload list   R: refresh status (git/GitHub)\n  ?: this help   q: quit"
+		m.lastOutput = "Normal mode keys:\n  j/k or arrows: navigate\n  gg/G: top/bottom\n  / or i: search mode\n  :: command mode\n  Enter/o: open   O: open new window   E: choose editor\n  e: edit project   d: delete project   f: toggle favorite\n  p: toggle profiles view   r: reload list   R: refresh status (git/GitHub)\n  ?: this help   q: quit"
 	}
 	return m, nil
 }
@@ -322,6 +363,34 @@ func sortProjects(out []model.Project, q string) {
 		}
 		return out[i].Name < out[j].Name
 	})
+}
+
+var knownEditors = []string{"zed", "code", "codium", "cursor", "nvim", "vim", "helix"}
+
+func (m *Model) cycleEditorCompletion() {
+	val := strings.ToLower(strings.TrimSpace(m.input.Value()))
+	if val == "" {
+		m.input.SetValue(knownEditors[0])
+		m.input.CursorEnd()
+		return
+	}
+	for i, ed := range knownEditors {
+		if ed == val {
+			next := (i + 1) % len(knownEditors)
+			m.input.SetValue(knownEditors[next])
+			m.input.CursorEnd()
+			return
+		}
+	}
+	for _, ed := range knownEditors {
+		if strings.HasPrefix(ed, val) {
+			m.input.SetValue(ed)
+			m.input.CursorEnd()
+			return
+		}
+	}
+	m.input.SetValue(knownEditors[0])
+	m.input.CursorEnd()
 }
 
 // splitCSV parses a comma-separated input into a clean tag slice.
