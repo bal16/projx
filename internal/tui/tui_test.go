@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -248,5 +249,64 @@ func TestRefreshKeyPreservesPreview(t *testing.T) {
 	m = up.(Model)
 	if !strings.Contains(m.status, "refreshed status (1 projects)") {
 		t.Fatalf("expected updated status with project count, got %q", m.status)
+	}
+}
+
+func TestViewScrollsWhenSelectedIsOffscreen(t *testing.T) {
+	lipgloss.SetColorProfile(termenv.ANSI256)
+	var projs []model.Project
+	for i := 0; i < 25; i++ {
+		projs = append(projs, model.Project{
+			Name: fmt.Sprintf("proj-%02d", i),
+			Path: fmt.Sprintf("/path/proj-%02d", i),
+		})
+	}
+	m := Model{
+		projects: projs,
+		filtered: projs,
+		width:    80,
+		height:   16, // maxLines = 10
+		mode:     "normal",
+	}
+
+	// At start: selected = 0. proj-00 visible, proj-20 NOT visible.
+	out0 := m.View()
+	if !strings.Contains(out0, "proj-00") {
+		t.Fatalf("expected proj-00 to be visible initially: %q", out0)
+	}
+	if strings.Contains(out0, "proj-20") {
+		t.Fatalf("expected proj-20 to be off-screen initially: %q", out0)
+	}
+
+	// Set selected to 20: view must scroll so proj-20 is visible and proj-00 scrolls off
+	m.selected = 20
+	m.ensureVisible()
+	out20 := m.View()
+	if !strings.Contains(out20, "proj-20") {
+		t.Fatalf("expected proj-20 to be visible after scrolling: %q", out20)
+	}
+	if strings.Contains(out20, "proj-00") {
+		t.Fatalf("expected proj-00 to have scrolled out of viewport: %q", out20)
+	}
+	if !strings.Contains(out20, "> ") {
+		t.Fatalf("expected selected pointer in viewport: %q", out20)
+	}
+
+	// Jump to bottom via G
+	up, _ := m.handleNormalMode("G")
+	m = up.(Model)
+	outBottom := m.View()
+	if !strings.Contains(outBottom, "proj-24") {
+		t.Fatalf("expected proj-24 to be visible at bottom: %q", outBottom)
+	}
+
+	// Jump to top via gg
+	up, _ = m.handleNormalMode("g")
+	m = up.(Model)
+	up, _ = m.handleNormalMode("g")
+	m = up.(Model)
+	outTop := m.View()
+	if !strings.Contains(outTop, "proj-00") {
+		t.Fatalf("expected proj-00 to be visible at top after gg: %q", outTop)
 	}
 }

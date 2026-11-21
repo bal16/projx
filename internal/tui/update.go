@@ -18,6 +18,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.input.Width = msg.Width - 4
 		m.edit.SetWidth(msg.Width)
+		m.ensureVisible()
 		return m, nil
 
 	case projectsMsg:
@@ -124,10 +125,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "up", "ctrl+p", "ctrl+k":
 				if m.selected > 0 {
 					m.selected--
+					m.ensureVisible()
 				}
-			case "down", "ctrl+j":
+			case "down", "ctrl+j", "ctrl+n":
 				if m.selected < len(m.filtered)-1 {
 					m.selected++
+					m.ensureVisible()
 				}
 			case "ctrl+r":
 				return m, loadProjectsCmd(m.repo)
@@ -157,6 +160,7 @@ func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
 			m.lastOutput = ""
 			m.showProfiles = false
 			m.selected = 0
+			m.ensureVisible()
 			return m, nil
 		}
 	}
@@ -164,17 +168,27 @@ func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
 	case "ctrl+c", "q":
 		m.quitting = true
 		return m, tea.Quit
-	case "j", "down":
+	case "j", "down", "ctrl+j", "ctrl+d", "pgdown":
 		m.lastOutput = ""
 		m.showProfiles = false
 		if m.selected < len(m.filtered)-1 {
-			m.selected++
+			if key == "pgdown" || key == "ctrl+d" {
+				m.selected = min(m.selected+m.maxLines(), len(m.filtered)-1)
+			} else {
+				m.selected++
+			}
+			m.ensureVisible()
 		}
-	case "k", "up":
+	case "k", "up", "ctrl+k", "ctrl+u", "pgup":
 		m.lastOutput = ""
 		m.showProfiles = false
 		if m.selected > 0 {
-			m.selected--
+			if key == "pgup" || key == "ctrl+u" {
+				m.selected = max(m.selected-m.maxLines(), 0)
+			} else {
+				m.selected--
+			}
+			m.ensureVisible()
 		}
 	case "g":
 		m.pendingKey = "g"
@@ -183,6 +197,7 @@ func (m Model) handleNormalMode(key string) (tea.Model, tea.Cmd) {
 		m.showProfiles = false
 		if len(m.filtered) > 0 {
 			m.selected = len(m.filtered) - 1
+			m.ensureVisible()
 		}
 	case "/":
 		m.mode = "search"
@@ -283,6 +298,7 @@ func (m *Model) applyFilter() {
 	if len(m.filtered) == 0 {
 		m.selected = 0
 	}
+	m.ensureVisible()
 }
 
 func sortProjects(out []model.Project, q string) {

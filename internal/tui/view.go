@@ -120,14 +120,26 @@ func (m Model) View() string {
 		previewLines = nil
 	}
 
-	maxLines := m.height - 6
-	if maxLines < 5 {
-		maxLines = 5
+	maxLines := m.maxLines()
+	offset := m.scrollOffset
+	if m.selected < offset {
+		offset = m.selected
 	}
+	if m.selected >= offset+maxLines {
+		offset = m.selected - maxLines + 1
+	}
+	if maxOffset := len(listLines) - maxLines; maxOffset >= 0 && offset > maxOffset {
+		offset = maxOffset
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
 	for i := 0; i < maxLines; i++ {
 		left := ""
-		if i < len(listLines) {
-			left = listLines[i]
+		listIdx := offset + i
+		if listIdx < len(listLines) {
+			left = listLines[listIdx]
 		}
 		right := ""
 		if twoCol && i < len(previewLines) {

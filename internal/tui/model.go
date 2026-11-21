@@ -19,6 +19,7 @@ type Model struct {
 	mode         string // "search", "normal", or "command"
 	pendingKey   string
 	selected     int
+	scrollOffset int
 	width        int
 	height       int
 	status       string
@@ -86,4 +87,39 @@ func Run(repo *db.Repository) (string, bool, error) {
 		return fm.OpenPath(), fm.OpenNew(), nil
 	}
 	return "", false, nil
+}
+
+func (m Model) maxLines() int {
+	maxLines := m.height - 6
+	if maxLines < 5 {
+		maxLines = 5
+	}
+	return maxLines
+}
+
+func (m *Model) ensureVisible() {
+	maxLines := m.maxLines()
+	if len(m.filtered) == 0 {
+		m.selected = 0
+		m.scrollOffset = 0
+		return
+	}
+	if m.selected < 0 {
+		m.selected = 0
+	}
+	if m.selected >= len(m.filtered) {
+		m.selected = len(m.filtered) - 1
+	}
+	if m.selected < m.scrollOffset {
+		m.scrollOffset = m.selected
+	}
+	if m.selected >= m.scrollOffset+maxLines {
+		m.scrollOffset = m.selected - maxLines + 1
+	}
+	if maxOffset := len(m.filtered) - maxLines; maxOffset >= 0 && m.scrollOffset > maxOffset {
+		m.scrollOffset = maxOffset
+	}
+	if m.scrollOffset < 0 {
+		m.scrollOffset = 0
+	}
 }
