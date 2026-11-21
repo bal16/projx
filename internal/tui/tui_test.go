@@ -89,10 +89,17 @@ func TestEditProjectFlow(t *testing.T) {
 	// change fields: editor + tags
 	m.edit.inputs[1].SetValue("code")
 	m.edit.inputs[3].SetValue("web, api")
-	saved, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	saved, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = saved.(Model)
 	if m.edit.Active() {
 		t.Fatal("editing not closed after save")
+	}
+	if cmd == nil {
+		t.Fatal("expected background refresh command after save")
+	}
+	msg := cmd()
+	if pmsg, ok := msg.(projectsMsg); !ok || len(pmsg.projects) == 0 {
+		t.Fatalf("expected projectsMsg from save cmd, got %#v", msg)
 	}
 
 	got, err := repo.Get("/tmp/alpha")

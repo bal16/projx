@@ -151,19 +151,28 @@ func (f *EditForm) save(repo *db.Repository, projects []model.Project) (tea.Cmd,
 	if err := repo.Update(&ed); err != nil {
 		return nil, "error: " + err.Error()
 	}
-	// refresh git + GitHub (when enabled) on save so data is obtained
-	if gi := gitinfo.Inspect(ed.Path); gi.IsRepo {
-		_ = repo.UpdateGitStatus(ed.ID, gi)
-	}
-	if ed.GHEnabled != nil && *ed.GHEnabled {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		if c, err := ghinfo.FetchOpenCounts(ctx, ed.Path); err == nil {
-			_ = repo.UpdateGitHubStatus(ed.ID, c.OpenPRs, c.OpenIssues, c.FetchedAt)
-		}
-		cancel()
-	}
 	f.active = false
-	return loadProjectsCmd(repo), "updated " + ed.Name
+	return refreshProjectAndLoadCmd(repo, ed), "updated " + ed.Name
+}
+
+func refreshProjectAndLoadCmd(repo *db.Repository, p model.Project) tea.Cmd {
+	return func() tea.Msg {
+		if gi := gitinfo.Inspect(p.Path); gi.IsRepo {
+			_ = repo.UpdateGitStatus(p.ID, gi)
+		}
+		if p.GHEnabled != nil && *p.GHEnabled {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			if c, err := ghinfo.FetchOpenCounts(ctx, p.Path); err == nil {
+				_ = repo.UpdateGitHubStatus(p.ID, c.OpenPRs, c.OpenIssues, c.FetchedAt)
+			}
+			cancel()
+		}
+		projects, err := repo.List("", "", false)
+		if err != nil {
+			return errMsg{err}
+		}
+		return projectsMsg{projects}
+	}
 }
 
 // View renders the edit form.
