@@ -174,3 +174,52 @@ func TestViewGitHubPlaceholderAndDisabled(t *testing.T) {
 		t.Fatalf("did not expect PR/issues for disabled project: %q", out)
 	}
 }
+
+func TestRefreshKeyPreservesPreview(t *testing.T) {
+	lipgloss.SetColorProfile(termenv.ANSI256)
+	dir := t.TempDir()
+	m := Model{
+		projects: []model.Project{
+			{Name: "my-project", Path: dir, GitBranch: "main"},
+		},
+		width: 120, height: 24, mode: "normal",
+	}
+	m.filtered = m.projects
+	m.selected = 0
+
+	// Pressing R
+	up, cmd := m.handleNormalMode("R")
+	m = up.(Model)
+	if cmd == nil {
+		t.Fatal("expected command from R key")
+	}
+	if m.status != "refreshing status..." {
+		t.Fatalf("unexpected status: %q", m.status)
+	}
+
+	// Simulating commandResultMsg for refresh
+	up, cmd = m.Update(commandResultMsg{cmd: "refresh", output: "my-project  main\n"})
+	m = up.(Model)
+	if cmd == nil {
+		t.Fatal("expected loadProjectsCmd after refresh")
+	}
+	if m.lastOutput != "" {
+		t.Fatalf("expected lastOutput to be empty on refresh, got %q", m.lastOutput)
+	}
+	if m.status != "refreshed status" {
+		t.Fatalf("expected status 'refreshed status', got %q", m.status)
+	}
+
+	// Verify preview still shows the project, not raw CLI output
+	out := m.View()
+	if !strings.Contains(out, "my-project") {
+		t.Fatalf("expected preview to show project name: %q", out)
+	}
+
+	// Simulating projectsMsg arrives
+	up, _ = m.Update(projectsMsg{projects: m.projects})
+	m = up.(Model)
+	if !strings.Contains(m.status, "refreshed status (1 projects)") {
+		t.Fatalf("expected updated status with project count, got %q", m.status)
+	}
+}

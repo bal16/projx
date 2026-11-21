@@ -23,7 +23,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case projectsMsg:
 		m.projects = msg.projects
 		m.applyFilter()
-		if m.lastOutput == "" {
+		if m.status == "refreshed status" {
+			m.status = fmt.Sprintf("refreshed status (%d projects)", len(m.projects))
+		} else if m.lastOutput == "" {
 			m.status = fmt.Sprintf("%d projects", len(m.projects))
 		}
 		return m, nil
@@ -33,12 +35,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case commandResultMsg:
-		m.lastOutput = msg.output
 		if msg.err != nil {
 			m.status = "cmd error: " + msg.err.Error()
 			m.lastOutput = msg.err.Error() + "\n" + msg.output
 		} else {
-			m.status = "ran: " + msg.cmd
+			if msg.cmd == "refresh" {
+				m.status = "refreshed status"
+				m.lastOutput = ""
+			} else {
+				m.status = "ran: " + msg.cmd
+				m.lastOutput = msg.output
+			}
 		}
 		return m, loadProjectsCmd(m.repo)
 
