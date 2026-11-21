@@ -157,6 +157,17 @@ func TestViewShowsProjectStatusInfo(t *testing.T) {
 	if !strings.Contains(out, "PR:") || !strings.Contains(out, "2") || !strings.Contains(out, "Issues:") || !strings.Contains(out, "5") {
 		t.Fatalf("PR/issues missing in view: %q", out)
 	}
+
+	// Clean repo preview
+	m.projects[0].GitStaged = 0
+	m.projects[0].GitModified = 0
+	m.projects[0].GitUntracked = 0
+	m.projects[0].GitDirty = 0
+	m.filtered = m.projects
+	cleanOut := m.View()
+	if !strings.Contains(cleanOut, "feat/auth (clean)") {
+		t.Fatalf("expected clean repo indicator in view: %q", cleanOut)
+	}
 }
 
 func TestViewGitHubPlaceholderAndDisabled(t *testing.T) {

@@ -168,8 +168,11 @@ func formatGitPreview(p model.Project) string {
 	if p.GitBranch == "" {
 		return ""
 	}
-	return fmt.Sprintf("%s  S:%d M:%d ?:%d D:%d R:%d U:%d",
-		p.GitBranch, p.GitStaged, p.GitModified, p.GitUntracked, p.GitDeleted, p.GitRenamed, p.GitConflicted)
+	parts := gitNonZeroParts(p)
+	if len(parts) == 0 {
+		return p.GitBranch + " (clean)"
+	}
+	return p.GitBranch + "  " + strings.Join(parts, " ")
 }
 
 func gitNonZeroParts(p model.Project) []string {
