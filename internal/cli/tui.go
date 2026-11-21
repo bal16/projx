@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/bal16/projx/internal/tui"
@@ -14,40 +12,17 @@ func newTuiCmd() *cobra.Command {
 		Short: "Interactive TUI project picker",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			a := requireApp()
-			path, newWindow, err := tui.Run(a.Repo)
+			res, err := tui.Run(a.Repo)
 			if err != nil {
 				return err
 			}
-			if path == "" {
+			if !res.Opened || res.Path == "" {
 				return nil
 			}
-			p, _ := a.Repo.GetByPath(path)
-
-			ed := a.Config.DefaultEditor
-			if p != nil && p.Editor != "" {
-				ed = p.Editor
-			}
-			bin, ok := a.Config.EditorCommands[ed]
-			if !ok {
-				bin = ed
-			}
-
-			argv := []string{path}
-			if newWindow {
-				switch ed {
-				case "zed", "code", "codium", "cursor":
-					argv = []string{"-n", path}
-				}
-			}
-
-			if err := startEditor(a.Config, ed, bin, argv); err != nil {
-				return fmt.Errorf("launch %s: %w", bin, err)
-			}
-			if p != nil {
-				_ = a.Repo.TouchLastOpened(p.ID)
-			}
-			fmt.Printf("opened %s in %s\n", path, ed)
-			return nil
+			return runOpen(a, res.Path, openParams{
+				newWindow: res.NewWindow,
+				editor:    res.Editor,
+			})
 		},
 	}
 }

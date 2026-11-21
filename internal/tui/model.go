@@ -29,6 +29,7 @@ type Model struct {
 	opened       bool
 	openPath     string
 	openNew      bool
+	openEditor   string
 	edit         EditForm
 	cmd          CommandPalette
 }
@@ -62,6 +63,14 @@ func (m Model) Init() tea.Cmd {
 	return loadProjectsCmd(m.repo)
 }
 
+// OpenResult holds the user's selection when exiting the TUI.
+type OpenResult struct {
+	Opened    bool
+	Path      string
+	NewWindow bool
+	Editor    string
+}
+
 // Opened reports whether the user selected a project to open.
 func (m Model) Opened() bool { return m.opened }
 
@@ -71,22 +80,27 @@ func (m Model) OpenPath() string { return m.openPath }
 // OpenNew reports whether the selection should open in a new window.
 func (m Model) OpenNew() bool { return m.openNew }
 
-// Run starts the TUI and returns selected path + new-window flag.
-func Run(repo *db.Repository) (string, bool, error) {
+// OpenEditor reports any editor override specified when opening.
+func (m Model) OpenEditor() string { return m.openEditor }
+
+// Run starts the TUI and returns the selected project and options.
+func Run(repo *db.Repository) (OpenResult, error) {
 	m := New(repo)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	final, err := p.Run()
 	if err != nil {
-		return "", false, err
+		return OpenResult{}, err
 	}
 	fm, ok := final.(Model)
 	if !ok {
-		return "", false, fmt.Errorf("unexpected model type")
+		return OpenResult{}, fmt.Errorf("unexpected model type")
 	}
-	if fm.Opened() {
-		return fm.OpenPath(), fm.OpenNew(), nil
-	}
-	return "", false, nil
+	return OpenResult{
+		Opened:    fm.Opened(),
+		Path:      fm.OpenPath(),
+		NewWindow: fm.OpenNew(),
+		Editor:    fm.OpenEditor(),
+	}, nil
 }
 
 func (m Model) maxLines() int {
