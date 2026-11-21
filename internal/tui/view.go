@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
@@ -86,30 +87,30 @@ func (m Model) View() string {
 	case len(m.filtered) > 0 && m.selected < len(m.filtered):
 		p := m.filtered[m.selected]
 		previewLines = append(previewLines, headerStyle.Render("Preview"))
-		previewLines = append(previewLines, "Name:   "+p.Name)
-		previewLines = append(previewLines, "Path:   "+p.Path)
-		previewLines = append(previewLines, "Editor: "+orDefault(p.Editor, "default"))
+		previewLines = append(previewLines, "Name:     "+p.Name)
+		previewLines = append(previewLines, "Path:     "+p.Path)
+		previewLines = append(previewLines, "Editor:   "+orDefault(p.Editor, "default"))
 		if p.Profile != "" {
-			previewLines = append(previewLines, "Profile: "+p.Profile)
+			previewLines = append(previewLines, "Profile:  "+p.Profile)
 		}
 		if len(p.Tags) > 0 {
-			previewLines = append(previewLines, "Tags:   "+strings.Join(p.Tags, ", "))
+			previewLines = append(previewLines, "Tags:     "+strings.Join(p.Tags, ", "))
 		}
 		if p.Group != "" {
-			previewLines = append(previewLines, "Group:  "+p.Group)
+			previewLines = append(previewLines, "Group:    "+p.Group)
 		}
 		if line := formatGitPreview(p); line != "" {
-			previewLines = append(previewLines, "Git:    "+line)
+			previewLines = append(previewLines, "Git:      "+line)
 		}
 		if line, ok := formatGitHub(p); ok {
 			previewLines = append(previewLines, line)
 		}
 		if p.Remote != "" {
-			previewLines = append(previewLines, "Remote: "+p.Remote)
+			previewLines = append(previewLines, "Remote:   "+p.Remote)
 		}
 		previewLines = append(previewLines, "Modified: "+formatModified(p.Path))
 		if !p.LastOpened.IsZero() {
-			previewLines = append(previewLines, "Opened: "+p.LastOpened.Format("2006-01-02 15:04"))
+			previewLines = append(previewLines, "Opened:   "+p.LastOpened.Format("2006-01-02 15:04"))
 		}
 	default:
 		previewLines = append(previewLines, dimStyle.Render("no selection"))
@@ -203,7 +204,13 @@ func formatModified(path string) string {
 	if err != nil {
 		return "-"
 	}
-	return info.ModTime().Format("2006-01-02 15:04")
+	t := info.ModTime()
+	if gitInfo, err := os.Stat(filepath.Join(path, ".git", "index")); err == nil {
+		if gitInfo.ModTime().After(t) {
+			t = gitInfo.ModTime()
+		}
+	}
+	return t.Format("2006-01-02 15:04")
 }
 
 func formatGitHub(p model.Project) (string, bool) {
@@ -211,9 +218,9 @@ func formatGitHub(p model.Project) (string, bool) {
 		return "", false
 	}
 	if p.GHOpenPRs == nil || p.GHOpenIssues == nil {
-		return "PR:     -  Issues: -", true
+		return "PR:       -  Issues: -", true
 	}
-	line := fmt.Sprintf("PR:     %d  Issues: %d", *p.GHOpenPRs, *p.GHOpenIssues)
+	line := fmt.Sprintf("PR:       %d  Issues: %d", *p.GHOpenPRs, *p.GHOpenIssues)
 	if p.GHFetchedAt != nil {
 		line += "  (" + p.GHFetchedAt.Format("2006-01-02 15:04") + ")"
 	}
