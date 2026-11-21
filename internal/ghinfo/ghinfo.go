@@ -85,7 +85,7 @@ func FetchOpenCounts(ctx context.Context, path string) (Counts, error) {
 }
 
 func ghCount(ctx context.Context, path, kind, repo string) (int, error) {
-	cmd := exec.CommandContext(ctx, "gh", kind, "list", "-R", repo, "--state", "open", "--json", "number", "--jq", "length")
+	cmd := exec.CommandContext(ctx, "gh", kind, "list", "-R", repo, "--state", "open", "--limit", "1000", "--json", "number", "--jq", "length")
 	cmd.Dir = path
 	out, err := cmd.Output()
 	if err != nil {
