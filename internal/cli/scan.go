@@ -45,7 +45,7 @@ func runScan(a *App, roots []string, sp scanParams) error {
 		p := &model.Project{
 			Name:   f.Name,
 			Path:   f.Path,
-			Editor: a.Config.DefaultEditor,
+			Editor: "", // leave empty to follow default_editor
 			Tags:   []string{},
 		}
 		if gi := gitinfo.Inspect(f.Path); gi.IsRepo {
