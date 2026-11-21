@@ -67,7 +67,7 @@ func (m Model) View() string {
 			ptr, star,
 			nameCol, truncate(name, nameCol),
 			pathCol, truncate(shortPath(p.Path, m.homeDir()), pathCol),
-			gitStyle.Render(git),
+			renderGitStatus(p, git),
 		)
 		if i == m.selected {
 			line = selStyle.Render(padRight(line, listWidth))
@@ -100,7 +100,7 @@ func (m Model) View() string {
 			previewLines = append(previewLines, "Group:    "+p.Group)
 		}
 		if line := formatGitPreview(p); line != "" {
-			previewLines = append(previewLines, "Git:      "+line)
+			previewLines = append(previewLines, "Git:      "+renderGitStatus(p, line))
 		}
 		if line, ok := formatGitHub(p); ok {
 			previewLines = append(previewLines, line)
@@ -165,6 +165,19 @@ func formatGitList(p model.Project) string {
 	return " [" + p.GitBranch + " " + strings.Join(parts, " ") + "]"
 }
 
+func renderGitStatus(p model.Project, s string) string {
+	if s == "" {
+		return ""
+	}
+	if p.GitConflicted > 0 {
+		return gitConflictStyle.Render(s)
+	}
+	if p.GitDirty > 0 {
+		return gitDirtyStyle.Render(s)
+	}
+	return gitCleanStyle.Render(s)
+}
+
 func formatGitPreview(p model.Project) string {
 	if p.GitBranch == "" {
 		return ""
@@ -218,13 +231,13 @@ func formatGitHub(p model.Project) (string, bool) {
 		return "", false
 	}
 	if p.GHOpenPRs == nil || p.GHOpenIssues == nil {
-		return "PR:       -  Issues: -", true
+		return ghStyle.Render("PR:       -  Issues: -"), true
 	}
 	line := fmt.Sprintf("PR:       %d  Issues: %d", *p.GHOpenPRs, *p.GHOpenIssues)
 	if p.GHFetchedAt != nil {
 		line += "  (" + p.GHFetchedAt.Format("2006-01-02 15:04") + ")"
 	}
-	return line, true
+	return ghStyle.Render(line), true
 }
 
 func (m Model) homeDir() string {

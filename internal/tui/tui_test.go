@@ -168,6 +168,15 @@ func TestViewShowsProjectStatusInfo(t *testing.T) {
 	if !strings.Contains(cleanOut, "feat/auth (clean)") {
 		t.Fatalf("expected clean repo indicator in view: %q", cleanOut)
 	}
+
+	// Conflicted repo preview
+	m.projects[0].GitConflicted = 1
+	m.projects[0].GitDirty = 1
+	m.filtered = m.projects
+	conflictOut := m.View()
+	if !strings.Contains(conflictOut, "U:1") {
+		t.Fatalf("expected conflict indicator in view: %q", conflictOut)
+	}
 }
 
 func TestViewGitHubPlaceholderAndDisabled(t *testing.T) {
